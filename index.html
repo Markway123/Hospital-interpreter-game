@@ -150,6 +150,7 @@
       <span class="key">E 互动</span><span class="key">空格 视角切换</span><span class="key">Esc 释放鼠标</span>
     </div>
     <div class="note">🎤 语音作答<strong>可从容停顿</strong>：点「开始说话」后连续聆听并自动续听，说完点「停止作答」。🔊 <strong>MiMo 真人音</strong>：在上方填入你的 API Key 即可（留空则用浏览器机器音）。网页需放到网站/服务器上打开；若因浏览器跨域只有机器音，用随附 <b>mimo-tts-proxy.js</b> 代理并把上面的接口地址改为代理地址。先点下方测试。<span id="speech-state"></span></div>
+    <div id="wechatTip" style="display:none;font-size:13px;color:#8a4b00;background:#fff3d6;border:1px solid #f0d089;border-radius:10px;padding:10px 13px;margin-top:8px">⚠️ 检测到你在<b>微信内置浏览器</b>打开——它不支持语音输入。请点右上角「···」→ 选「<b>在浏览器打开</b>」，用 Chrome/Safari 等即可正常用语音作答。</div>
     <div style="text-align:center;margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="testVoice()">🔊 先测试一下声音</button></div>
     <div id="ttsStatus" style="text-align:center;font-size:12.5px;color:var(--muted);margin-top:6px"></div>
   </div>
@@ -207,6 +208,7 @@ function stopSpeak(){ if(ttsOK) speechSynthesis.cancel(); }
 window.addEventListener('DOMContentLoaded',()=>{
   const el=document.getElementById('speech-state');
   if(el) el.textContent=(speechOK?'（语音识别 ✓）':'（不支持语音识别，可打字）')+(ttsOK?'（NPC 配音 ✓）':'');
+  if(/micromessenger/i.test(navigator.userAgent||'')){const w=document.getElementById('wechatTip');if(w)w.style.display='block';}
   try{localStorage.removeItem('mimo_ep');const k=localStorage.getItem('mimo_key'),ep=localStorage.getItem('mimo_ep2');
     if(k){const ki=document.getElementById('keyInput');if(ki)ki.value=k;MIMO_KEY=k;}
     if(ep){const ei=document.getElementById('endpointInput');if(ei)ei.value=ep;CLOUD_TTS.endpoint=ep;}
