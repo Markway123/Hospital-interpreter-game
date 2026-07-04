@@ -22,6 +22,13 @@
   .st-item .ic{width:20px;text-align:center;}
   #prompt{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:5;background:rgba(14,143,143,.92);color:#fff;padding:9px 18px;border-radius:30px;font-size:15px;font-weight:600;display:none;}
   #help{position:fixed;right:14px;bottom:14px;z-index:5;background:rgba(13,40,40,.6);color:#cfeaea;font-size:12px;padding:8px 12px;border-radius:10px;display:none;}
+  #c{touch-action:none;}
+  #mControls{position:fixed;inset:0;z-index:6;pointer-events:none;display:none;}
+  #joy{position:absolute;left:24px;bottom:28px;width:120px;height:120px;border-radius:50%;background:rgba(20,60,60,.22);border:2px solid rgba(255,255,255,.45);pointer-events:auto;touch-action:none;}
+  #joyKnob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin-left:-26px;margin-top:-26px;border-radius:50%;background:rgba(14,143,143,.85);border:2px solid #fff;}
+  .mbtn{position:absolute;pointer-events:auto;touch-action:none;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:rgba(14,143,143,.8);color:#fff;font-weight:700;line-height:1.15;font-family:inherit;}
+  #btnE{right:24px;bottom:34px;width:80px;height:80px;font-size:15px;}
+  #btnV{right:116px;bottom:46px;width:62px;height:62px;font-size:12px;}
   .screen{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(8,18,22,.86);backdrop-filter:blur(3px);padding:18px;overflow:auto;}
   .panel{background:#fff;border-radius:18px;max-width:720px;width:100%;padding:26px;box-shadow:0 12px 50px rgba(0,0,0,.4);max-height:94vh;overflow:auto;}
   .panel.hidden,.screen.hidden{display:none;}
@@ -108,6 +115,11 @@
 <div id="hud"><h4 id="hudTitle">就诊流程</h4><div id="hudList"></div></div>
 <div id="prompt"></div>
 <div id="help">WASD 移动 · 鼠标 转视角 · <b>E</b> 互动 · <b>空格</b> 视角切换(第一/第三人称) · <b>Esc</b> 释放鼠标</div>
+<div id="mControls">
+  <div id="joy"><div id="joyKnob"></div></div>
+  <button id="btnE" class="mbtn">互动<br>E</button>
+  <button id="btnV" class="mbtn">视角<br>👁</button>
+</div>
 
 <div class="screen" id="screen-start">
   <div class="panel">
@@ -574,7 +586,8 @@ let scene,camera,renderer,clock;
 let yaw=0,pitch=0;
 const player={x:0,z:30,h:1.6};
 const keys={};
-let controlsEnabled=false,dialogOpen=false,built=false;
+let controlsEnabled=false,dialogOpen=false,built=false,isTouch=false;
+const joyVec={x:0,z:0};
 let BOUND={x:18,zMin:-40,zMax:34};
 
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
@@ -824,9 +837,10 @@ function enterGame(idx){
     document.getElementById('cross').style.display='block';
     document.getElementById('hud').style.display='block';
     document.getElementById('help').style.display='block';
+    if(isTouch){document.getElementById('mControls').style.display='block';document.getElementById('help').innerHTML='左摇杆 移动 · 右侧拖动 转视角 · 用「互动/视角」按钮';}
     document.getElementById('hudTitle').textContent=curScenario.icon+' '+curScenario.name.split(' · ')[0];
     if(!built) initScene();
-    buildHud();lockPointer();
+    buildHud();if(!isTouch)lockPointer();
   };
   if(window.THREE){begin();return;}
   const cc=document.getElementById('caseCards');
@@ -847,11 +861,14 @@ function refreshHud(){let nx=false;STATIONS.forEach((s,i)=>{const el=document.ge
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.05);
-  if(controlsEnabled&&!dialogOpen){
+  if(!dialogOpen){
     const sp=6*dt;let fx=0,fz=0;
-    if(keys['w']||keys['arrowup'])fz-=1;if(keys['s']||keys['arrowdown'])fz+=1;
-    if(keys['a']||keys['arrowleft'])fx-=1;if(keys['d']||keys['arrowright'])fx+=1;
-    if(fx||fz){const len=Math.hypot(fx,fz);fx/=len;fz/=len;const sinY=Math.sin(yaw),cosY=Math.cos(yaw);
+    if(controlsEnabled){
+      if(keys['w']||keys['arrowup'])fz-=1;if(keys['s']||keys['arrowdown'])fz+=1;
+      if(keys['a']||keys['arrowleft'])fx-=1;if(keys['d']||keys['arrowright'])fx+=1;
+    }
+    fx+=joyVec.x;fz+=joyVec.z;
+    if(fx||fz){let len=Math.hypot(fx,fz);if(len>1){fx/=len;fz/=len;}const sinY=Math.sin(yaw),cosY=Math.cos(yaw);
       player.x+=(fx*cosY+fz*sinY)*sp;player.z+=(fz*cosY-fx*sinY)*sp;
       player.x=Math.max(-BOUND.x,Math.min(BOUND.x,player.x));player.z=Math.max(BOUND.zMin,Math.min(BOUND.zMax,player.z));}
   }
@@ -1160,6 +1177,39 @@ function exportCSV(){
   csv+='\n评语与建议\n';R.tips.forEach((t,i)=>{csv+=`${i+1},${t.replace(/,/g,'，')}\n`;});
   downloadFile(`医疗陪护翻译成绩单_${studentName}_${curScenario.id}.csv`,csv,'text/csv;charset=utf-8');
 }
+/* ===== 手机触屏操作：左摇杆移动 + 右侧拖动转视角 + 互动/视角按钮 ===== */
+function setupMobile(){
+  isTouch = (window.matchMedia&&matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window);
+  if(!isTouch) return;
+  const joyEl=document.getElementById('joy'), knob=document.getElementById('joyKnob');
+  const btnE=document.getElementById('btnE'), btnV=document.getElementById('btnV');
+  let joyId=null, lookId=null, lookLast=null;
+  function playing(){return built&&!dialogOpen&&document.getElementById('screen-start').classList.contains('hidden')&&document.getElementById('screen-result').classList.contains('hidden');}
+  function jc(){const r=joyEl.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,rad:r.width/2};}
+  function updJoy(t){const c=jc();let dx=t.clientX-c.x,dy=t.clientY-c.y;const d=Math.hypot(dx,dy);if(d>c.rad){dx=dx/d*c.rad;dy=dy/d*c.rad;}joyVec.x=dx/c.rad;joyVec.z=dy/c.rad;knob.style.transform='translate('+dx+'px,'+dy+'px)';}
+  document.addEventListener('touchstart',e=>{
+    if(!playing())return;
+    for(const t of e.changedTouches){
+      const tgt=t.target;if(tgt&&tgt.closest&&tgt.closest('.mbtn'))continue;
+      const c=jc();
+      if(joyId===null && Math.hypot(t.clientX-c.x,t.clientY-c.y)<c.rad*1.9){joyId=t.identifier;updJoy(t);}
+      else if(lookId===null){lookId=t.identifier;lookLast={x:t.clientX,y:t.clientY};}
+    }
+  },{passive:false});
+  document.addEventListener('touchmove',e=>{
+    if(!playing())return;let handled=false;
+    for(const t of e.changedTouches){
+      if(t.identifier===joyId){updJoy(t);handled=true;}
+      else if(t.identifier===lookId){const dx=t.clientX-lookLast.x,dy=t.clientY-lookLast.y;yaw-=dx*0.005;pitch-=dy*0.005;pitch=Math.max(-1.2,Math.min(1.2,pitch));lookLast={x:t.clientX,y:t.clientY};handled=true;}
+    }
+    if(handled)e.preventDefault();
+  },{passive:false});
+  function endT(e){for(const t of e.changedTouches){if(t.identifier===joyId){joyId=null;joyVec.x=0;joyVec.z=0;knob.style.transform='translate(0,0)';}else if(t.identifier===lookId){lookId=null;lookLast=null;}}}
+  document.addEventListener('touchend',endT);document.addEventListener('touchcancel',endT);
+  btnE.addEventListener('click',()=>{if(!dialogOpen)tryInteract();});
+  btnV.addEventListener('click',()=>{if(!dialogOpen){viewMode=viewMode==='fps'?'tps':'fps';const cr=document.getElementById('cross');if(cr)cr.style.display=viewMode==='fps'?'block':'none';}});
+}
 buildCaseCards();
+setupMobile();
 </script>
 </body>
