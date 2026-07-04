@@ -146,10 +146,7 @@
 <div class="screen hidden" id="screen-dialog"><div class="panel" id="dlgBody"></div></div>
 <div class="screen hidden" id="screen-result"><div class="panel" id="resBody"></div></div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script>window.THREE||document.write('<script src="https://lib.baomitu.com/three.js/r128/three.min.js"><\/script>');</script>
-<script>window.THREE||document.write('<script src="https://cdn.staticfile.net/three.js/r128/three.min.js"><\/script>');</script>
-<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
+<!-- Three.js 改为按需懒加载（见脚本内 loadThree），避免 CDN 慢/被墙时卡住整个开始界面 -->
 <script>
 /* ===== 语音识别 / 合成 ===== */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -793,18 +790,51 @@ function buildCaseCards(){
      <h4>${s.name.split(' · ')[1]||s.name}</h4><p>${s.desc}</p>
      <span class="tag" style="background:${s.tagColor}">${s.tag} · ${s.stations.length}站</span></div>`).join('');
 }
+const THREE_CDNS=[
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',
+  'https://lib.baomitu.com/three.js/r128/three.min.js',
+  'https://cdn.staticfile.net/three.js/r128/three.min.js',
+  'https://unpkg.com/three@0.128.0/build/three.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
+];
+let threeLoading=null;
+function loadThree(){
+  if(window.THREE) return Promise.resolve();
+  if(threeLoading) return threeLoading;
+  threeLoading=new Promise((resolve,reject)=>{
+    let i=0;
+    (function next(){
+      if(window.THREE) return resolve();
+      if(i>=THREE_CDNS.length) return reject(new Error('all CDN failed'));
+      const s=document.createElement('script');
+      s.src=THREE_CDNS[i++];
+      s.onload=()=>window.THREE?resolve():next();
+      s.onerror=next;
+      document.head.appendChild(s);
+    })();
+  });
+  return threeLoading;
+}
 function enterGame(idx){
-  if(typeof THREE==='undefined'){alert('3D 引擎(Three.js)未能加载，通常是网络/CDN 问题（国内访问尤其常见）。请检查网络后按 Ctrl+F5 强制刷新重试；多试几次或换网络即可。');return;}
   primeAudio();applyVoiceSettings();
   studentName=(document.getElementById('nameInput').value||'').trim()||'未署名考生';
   curScenario=SCENARIOS[idx];STATIONS=curScenario.stations;
-  document.getElementById('screen-start').classList.add('hidden');
-  document.getElementById('cross').style.display='block';
-  document.getElementById('hud').style.display='block';
-  document.getElementById('help').style.display='block';
-  document.getElementById('hudTitle').textContent=curScenario.icon+' '+curScenario.name.split(' · ')[0];
-  if(!built) initScene();
-  buildHud();lockPointer();
+  const begin=()=>{
+    document.getElementById('screen-start').classList.add('hidden');
+    document.getElementById('cross').style.display='block';
+    document.getElementById('hud').style.display='block';
+    document.getElementById('help').style.display='block';
+    document.getElementById('hudTitle').textContent=curScenario.icon+' '+curScenario.name.split(' · ')[0];
+    if(!built) initScene();
+    buildHud();lockPointer();
+  };
+  if(window.THREE){begin();return;}
+  const cc=document.getElementById('caseCards');
+  if(cc)cc.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:22px;color:var(--teal-d);font-weight:600">⏳ 正在加载 3D 引擎…（首次或网络较慢时需几秒，请稍候）</div>';
+  loadThree().then(begin).catch(()=>{
+    alert('3D 引擎加载失败：多为网络/CDN 问题（国内访问常见）。请换个网络、关掉代理或稍后重试。开始界面其他功能不受影响。');
+    buildCaseCards();
+  });
 }
 function lockPointer(){const c=document.getElementById('c');c.requestPointerLock&&c.requestPointerLock();}
 document.addEventListener('pointerlockchange',()=>{controlsEnabled=(document.pointerLockElement===document.getElementById('c'));});
@@ -1122,4 +1152,15 @@ function exportHTML(){
 }
 function exportCSV(){
   const R=lastResult,rows=recRows();let csv='﻿';
-  csv+='医疗陪护
+  csv+='医疗陪护翻译认证成绩单\n';
+  csv+=`考生,${studentName}\n科室场景,${curScenario.name}\n测评时间,${R.date}\n综合得分,${R.overall}\n认证结果,${R.g.level}\n`;
+  csv+=`口语流利度与发音,${R.f}%\n翻译准确性,${R.a}%\n医学术语,${R.tm}%\n交际与英语口语对话,${R.e}%\n\n`;
+  csv+='序号,工位,任务类型,翻译准确,医学术语,口语流利,交际共情\n';
+  rows.forEach(r=>{csv+=`${r.i},${r.station},${r.type},${r.acc},${r.term},${r.flu},${r.emp}\n`;});
+  csv+='\n评语与建议\n';R.tips.forEach((t,i)=>{csv+=`${i+1},${t.replace(/,/g,'，')}\n`;});
+  downloadFile(`医疗陪护翻译成绩单_${studentName}_${curScenario.id}.csv`,csv,'text/csv;charset=utf-8');
+}
+buildCaseCards();
+</script>
+</body>
+</html>
