@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>3D 医院 · 陪护翻译闯关（多科室）</title>
+<style>
+  :root{--teal:#0e8f8f;--teal-d:#0a6e6e;--teal-l:#e6f5f5;--ink:#1f2d3d;--muted:#6b7c8f;
+    --line:#dbe6ea;--amber:#e8a23d;--green:#2ea36b;--red:#d8584f;--blue:#3a78c2;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;overflow:hidden;font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:#0b1418;color:var(--ink);}
+  #c{display:block;width:100vw;height:100vh;}
+  #cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;pointer-events:none;z-index:5;display:none;}
+  #cross::before,#cross::after{content:"";position:absolute;background:rgba(255,255,255,.8);}
+  #cross::before{left:8px;top:0;width:2px;height:18px;}
+  #cross::after{top:8px;left:0;height:2px;width:18px;}
+  #hud{position:fixed;left:14px;top:14px;z-index:5;background:rgba(13,40,40,.72);color:#eafafa;border-radius:12px;padding:12px 14px;font-size:13px;max-width:240px;backdrop-filter:blur(4px);display:none;}
+  #hud h4{margin:0 0 6px;font-size:13px;color:#8fe6e6;letter-spacing:.5px;}
+  .st-item{display:flex;align-items:center;gap:7px;padding:2px 0;opacity:.6;}
+  .st-item.next{opacity:1;font-weight:700;color:#fff;}
+  .st-item.done{opacity:.85;color:#7fe0a8;}
+  .st-item .ic{width:20px;text-align:center;}
+  #prompt{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:5;background:rgba(14,143,143,.92);color:#fff;padding:9px 18px;border-radius:30px;font-size:15px;font-weight:600;display:none;}
+  #help{position:fixed;right:14px;bottom:14px;z-index:5;background:rgba(13,40,40,.6);color:#cfeaea;font-size:12px;padding:8px 12px;border-radius:10px;display:none;}
+  .screen{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(8,18,22,.86);backdrop-filter:blur(3px);padding:18px;overflow:auto;}
+  .panel{background:#fff;border-radius:18px;max-width:720px;width:100%;padding:26px;box-shadow:0 12px 50px rgba(0,0,0,.4);max-height:94vh;overflow:auto;}
+  .panel.hidden,.screen.hidden{display:none;}
+  .badge-top{display:inline-block;background:var(--teal-l);color:var(--teal-d);padding:3px 12px;border-radius:30px;font-size:13px;font-weight:600;}
+  h1{font-size:24px;margin:.3em 0;}h3{margin:0 0 .3em;}p{line-height:1.6;}
+  .muted{color:var(--muted);font-size:14px;}
+  .dims{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+  .dim-tag{background:var(--teal-l);color:var(--teal-d);border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:600;}
+  .note{font-size:13px;color:var(--muted);background:#fff8ec;border:1px solid #f3e2c0;border-radius:10px;padding:10px 13px;margin:12px 0;}
+  .field{margin:12px 0;}
+  .field label{font-size:13px;font-weight:600;color:var(--ink);display:block;margin-bottom:5px;}
+  .field input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;font-family:inherit;}
+  .field input:focus{outline:none;border-color:var(--teal);}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0;}
+  .case{border:2px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;transition:.15s;background:#fff;}
+  .case:hover{border-color:var(--teal);background:var(--teal-l);transform:translateY(-2px);}
+  .case .ci{font-size:30px;}
+  .case h4{margin:6px 0 4px;font-size:16px;}
+  .case p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;}
+  .case .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:7px;color:#fff;}
+  .keys{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
+  .key{background:#eef4f4;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px;}
+  .btn{border:none;border-radius:30px;padding:11px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;}
+  .btn-primary{background:var(--teal);color:#fff;}.btn-primary:hover{background:var(--teal-d);}
+  .btn-ghost{background:#fff;color:var(--teal-d);border:1.5px solid var(--teal);}
+  .btn-sm{padding:8px 16px;font-size:13.5px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .speaker{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;margin-bottom:6px;}
+  .av{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:16px;}
+  .av.doc{background:#e3eefb;}.av.pat{background:#fdeede;}.av.nur{background:#fde9f1;}
+  .av.talking{animation:talk .32s infinite alternate;box-shadow:0 0 0 3px rgba(14,143,143,.25);}
+  @keyframes talk{from{transform:scale(1);}to{transform:scale(1.16);}}
+  .bubble{border-radius:12px;padding:13px 16px;font-size:16px;margin-bottom:12px;position:relative;}
+  .bubble.doc{background:#eef4fc;border:1px solid #d7e6f7;}
+  .bubble.pat{background:#fdf3e7;border:1px solid #f4e0c4;}
+  .bubble.nur{background:#fdeef5;border:1px solid #f5d6e6;}
+  .bubble.cv{background:#f1f8f1;border:1px solid #d4ecd4;}
+  .spk-btn{border:none;background:rgba(14,143,143,.12);color:var(--teal-d);border-radius:20px;padding:4px 12px;font-size:12.5px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:inherit;}
+  .spk-btn:hover{background:rgba(14,143,143,.22);}
+  .task-instr{font-size:14px;color:var(--teal-d);font-weight:600;margin-bottom:12px;background:var(--teal-l);border-radius:8px;padding:8px 12px;display:inline-block;}
+  .mic-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px;}
+  .mic{min-width:150px;border:none;border-radius:30px;padding:12px 18px;background:var(--teal);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .mic.rec{background:var(--red);animation:pulse 1.1s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(216,88,79,.5);}100%{box-shadow:0 0 0 16px rgba(216,88,79,0);}}
+  .mic-hint{font-size:12.5px;color:var(--muted);}
+  .timer{font-size:13px;color:var(--teal-d);font-weight:700;}
+  textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px;font-size:15px;font-family:inherit;resize:vertical;min-height:62px;}
+  textarea:focus{outline:none;border-color:var(--teal);}
+  .transcript{background:#f0f7f7;border:1px dashed var(--teal);border-radius:10px;padding:10px 13px;font-size:15px;margin:8px 0;min-height:20px;}
+  .transcript:empty{display:none;}
+  .opt{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:12px 15px;margin-bottom:9px;font-size:15px;cursor:pointer;font-family:inherit;transition:.12s;}
+  .opt:hover{border-color:var(--teal);background:var(--teal-l);}
+  .opt.sel-good{border-color:var(--green);background:#eaf7f0;}
+  .opt.sel-bad{border-color:var(--red);background:#fbeeed;}
+  .opt.sel-dim{opacity:.5;}
+  .fb{border-radius:12px;padding:15px;margin-top:12px;border:1px solid var(--line);background:#fafdfd;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .chip{font-size:12px;font-weight:700;padding:5px 11px;border-radius:20px;color:#fff;}
+  .kw{display:inline-block;font-size:13px;padding:2px 9px;border-radius:6px;margin:3px 4px 0 0;}
+  .kw.hit{background:#e3f5ec;color:var(--green);border:1px solid #b9e6cd;}
+  .kw.miss{background:#fbeeed;color:var(--red);border:1px solid #f1c9c5;}
+  .model{background:#fff;border-left:3px solid var(--teal);padding:9px 13px;border-radius:6px;font-size:15px;margin-top:10px;}
+  .fb h4{margin:0 0 6px;font-size:14px;}.small{font-size:12.5px;color:var(--muted);}
+  .bar-row{margin:12px 0;}
+  .bar-row .lab{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:4px;}
+  .bar{height:14px;background:#eef2f3;border-radius:10px;overflow:hidden;}
+  .bar span{display:block;height:100%;border-radius:10px;transition:width .9s ease;}
+  .cert{text-align:center;padding:20px;border-radius:16px;color:#fff;margin-bottom:14px;}
+  .score-big{font-size:48px;font-weight:800;line-height:1;}
+  .exp-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px;}
+  #diffSel{display:flex;gap:10px;}
+  .diff{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 13px;font-size:14.5px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit;transition:.12s;}
+  .diff small{font-weight:400;font-size:11.5px;color:var(--muted);}
+  .diff:hover{border-color:var(--teal);}
+  .diff.active{border-color:var(--teal);background:var(--teal-l);color:var(--teal-d);box-shadow:0 0 0 3px rgba(14,143,143,.12);}
+  .diff.active small{color:var(--teal-d);}
+  .hint-box{font-size:13px;color:var(--teal-d);margin-left:8px;}
+  .hint-pt{display:inline-block;background:#eef7f7;border:1px solid #cfe7e7;color:var(--teal-d);border-radius:6px;padding:2px 8px;margin:3px 4px 0 0;font-size:13px;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="cross"></div>
+<div id="hud"><h4 id="hudTitle">就诊流程</h4><div id="hudList"></div></div>
+<div id="prompt"></div>
+<div id="help">WASD 移动 · 鼠标 转视角 · <b>E</b> 互动 · <b>空格</b> 视角切换(第一/第三人称) · <b>Esc</b> 释放鼠标</div>
+
+<div class="screen" id="screen-start">
+  <div class="panel">
+    <span class="badge-top">3D 医院 · 医疗陪护翻译认证</span>
+    <h1>🏥 走进医院，做一名陪护翻译</h1>
+    <p class="muted">在还原的<strong>南方医院</strong>门诊大厅自由行走（<b>空格</b>切换第一/第三人称），靠近发光工位按 <b>E</b> 触发任务：在中国医护与外籍患者之间做<strong>现场口译</strong>，并与患者进行<strong>英语口语对话</strong>。NPC 台词会<strong>语音朗读</strong>。请先填写姓名并选择科室场景。</p>
+    <div class="field">
+      <label>👤 考生姓名 / 学号（用于成绩单）</label>
+      <input id="nameInput" placeholder="例如：张三 / 2024010101" />
+    </div>
+    <div class="field">
+      <label>🎚️ 难度</label>
+      <div id="diffSel">
+        <button class="diff active" data-d="easy" onclick="setDiff('easy',this)">😊 轻松<small>显示要点提示 · 评分宽松</small></button>
+        <button class="diff" data-d="std" onclick="setDiff('std',this)">🎯 标准<small>接近真实考核</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <label>🔑 语音大模型 API Key（选填）</label>
+      <input id="keyInput" type="password" placeholder="填入 MiMo Key（sk-…）才有真人音；留空用浏览器语音" oninput="applyVoiceSettings()" />
+      <input id="endpointInput" placeholder="接口地址（默认 MiMo 在线；用代理则填 http://localhost:8787）" oninput="applyVoiceSettings()" style="margin-top:6px" />
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">🔒 Key 只保存在你本机浏览器(localStorage)，不写进文件、不上传，可安全部署到公网。</div>
+    </div>
+    <h3 style="margin-top:6px">选择科室场景</h3>
+    <div class="cards" id="caseCards"></div>
+    <div class="keys">
+      <span class="key">W A S D 行走</span><span class="key">鼠标 转视角</span>
+      <span class="key">E 互动</span><span class="key">空格 视角切换</span><span class="key">Esc 释放鼠标</span>
+    </div>
+    <div class="note">🎤 语音作答<strong>可从容停顿</strong>：点「开始说话」后连续聆听并自动续听，说完点「停止作答」。🔊 <strong>MiMo 真人音</strong>：在上方填入你的 API Key 即可（留空则用浏览器机器音）。网页需放到网站/服务器上打开；若因浏览器跨域只有机器音，用随附 <b>mimo-tts-proxy.js</b> 代理并把上面的接口地址改为代理地址。先点下方测试。<span id="speech-state"></span></div>
+    <div style="text-align:center;margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="testVoice()">🔊 先测试一下声音</button></div>
+    <div id="ttsStatus" style="text-align:center;font-size:12.5px;color:var(--muted);margin-top:6px"></div>
+  </div>
+</div>
+
+<div class="screen hidden" id="screen-dialog"><div class="panel" id="dlgBody"></div></div>
+<div class="screen hidden" id="screen-result"><div class="panel" id="resBody"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===== 语音识别 / 合成 ===== */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const speechOK = !!SR;
+const ttsOK = ('speechSynthesis' in window);
+let voices=[];
+function loadVoices(){ if(ttsOK) voices=speechSynthesis.getVoices()||[]; }
+if(ttsOK){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+const VOICE_PREF={
+  en:['google us english','microsoft aria','microsoft jenny','microsoft guy','samantha','google uk english female','natural','aaron','daniel','karen'],
+  zh:['google 普通话','google zh','microsoft xiaoxiao','microsoft yunxi','microsoft yunyang','microsoft huihui','tingting','ting-ting','sinji','meijia']
+};
+function rankVoice(v,pref){
+  const n=(v.name||'').toLowerCase();
+  for(let i=0;i<pref.length;i++){ if(n.includes(pref[i])) return 1000-i; }
+  let s=0;
+  if(n.includes('google')||n.includes('natural')||n.includes('premium')||n.includes('enhanced')) s+=40;
+  if(v.localService===false) s+=8;
+  if(n.includes('siri')) s+=15;
+  return s;
+}
+function pickVoice(lang,gender){
+  const p=lang.slice(0,2).toLowerCase();
+  let cand=voices.filter(v=>v.lang&&v.lang.toLowerCase().startsWith(p));
+  if(!cand.length) cand=voices.slice();
+  if(!cand.length) return null;
+  const pref=VOICE_PREF[p]||[];
+  cand=cand.slice().sort((a,b)=>rankVoice(b,pref)-rankVoice(a,pref));
+  if(gender){
+    const fem=['female','aria','jenny','samantha','xiaoxiao','tingting','ting-ting','huihui','meijia','sinji','zira','karen','susan','女'];
+    const masc=['male','guy','yunxi','yunyang','aaron','daniel','david','mark','男'];
+    const want=gender==='f'?fem:masc, avoid=gender==='f'?masc:fem;
+    const g=cand.find(v=>{const nm=(v.name||'').toLowerCase();return want.some(k=>nm.includes(k))&&!avoid.some(k=>nm.includes(k));});
+    if(g) return g;
+  }
+  return cand[0]||null;
+}
+function speak(text,lang,opts){
+  if(!ttsOK)return; speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text); u.lang=lang;
+  const v=pickVoice(lang,opts&&opts.gender); if(v)u.voice=v;
+  u.rate=(opts&&opts.rate)||0.9; u.pitch=(opts&&opts.pitch)||1.0;
+  speechSynthesis.speak(u);
+}
+function stopSpeak(){ if(ttsOK) speechSynthesis.cancel(); }
+window.addEventListener('DOMContentLoaded',()=>{
+  const el=document.getElementById('speech-state');
+  if(el) el.textContent=(speechOK?'（语音识别 ✓）':'（不支持语音识别，可打字）')+(ttsOK?'（NPC 配音 ✓）':'');
+  try{const k=localStorage.getItem('mimo_key'),ep=localStorage.getItem('mimo_ep');
+    if(k){const ki=document.getElementById('keyInput');if(ki)ki.value=k;MIMO_KEY=k;}
+    if(ep){const ei=document.getElementById('endpointInput');if(ei)ei.value=ep;CLOUD_TTS.endpoint=ep;}
+  }catch(_){}
+});
+
+/* ============================================================
+   场景库：4 个科室
+   ============================================================ */
+const SCENARIOS=[
+/* ---------- 0 普外科 · 急性阑尾炎 ---------- */
+{ id:'gs', icon:'🔪', name:'普外科 · 急性阑尾炎', tag:'基础', tagColor:'#0e8f8f',
+  desc:'外籍游客腹痛就诊，从挂号到出院的完整诊疗，节奏平稳，适合入门。',
+  stations:[
+   { icon:'🧾', name:'挂号导诊台', short:'挂号', color:0xf0a93d, intro:'你来到挂号导诊台，外籍患者正一脸焦虑地等着你。',
+     npc:[{role:'nur',x:-1,emoji:'💁'},{role:'pat',x:1.4,emoji:'🧑'}],
+     tasks:[
+      {type:'conversation',who:'pat',spk:'外籍患者',emoji:'🧑',
+       src:"Oh, are you the interpreter? Thank goodness. I'm really nervous — this is my first time in a hospital in China and I don't speak any Chinese. Could you tell me what we need to do first?",
+       hint:'用英文回应患者，安抚情绪并简单说明流程（先挂号、再看医生）。',
+       topic:[['interpreter','here','help','i will','don\'t worry','no worry','relax'],['register','registration','sign up','desk','first'],['doctor','see the doctor','with you','accompany','stay with']],
+       minWords:10,
+       model:"Hi, yes, I'm your interpreter and I'll be with you the whole time, so please don't worry. First we'll register at this desk with your passport, then I'll take you to see the doctor and translate everything for you."},
+      {type:'interpret',dir:'en2zh',who:'pat',
+       src:"I've had a sharp pain in my lower right belly since last night, and I think I have a fever. I really don't know where to go.",
+       kw:[['右下','下腹'],['疼','痛'],['昨晚','昨天晚上','昨夜','夜里'],['发烧','发热','烧'],['哪','挂','科']],
+       terms:[['发热','发烧']],
+       model:"他从昨晚开始右下腹剧烈疼痛，还觉得自己发烧了，不知道该挂哪个科。"},
+      {type:'interpret',dir:'zh2en',who:'nur',spk:'导诊护士',
+       src:"请先用护照在自助机上挂个号。您这种情况建议挂普外科，先量一下体温。",
+       kw:[['passport'],['register','registration','sign up','number'],['general surgery','surgery'],['temperature']],
+       terms:[['general surgery','surgery']],
+       model:"Please register first at the self-service machine with your passport. For your symptoms, I'd suggest General Surgery. Let's take your temperature first."}
+     ]},
+   { icon:'🩺', name:'普外科诊室', short:'问诊', color:0x3a78c2, intro:'你陪患者走进普外科诊室，医生开始询问病史。',
+     npc:[{role:'doc',x:-1.4,emoji:'👨‍⚕️'},{role:'pat',x:1.2,emoji:'🧑'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"您好，请问哪里不舒服？疼痛是什么时候开始的？有没有恶心、呕吐或者腹泻？",
+       kw:[['where','what','problem','wrong'],['when','start','begin'],['nausea','nauseous'],['vomit','throw up'],['diarrhea','diarrhoea']],
+       terms:[['nausea'],['vomit','vomiting'],['diarrhea','diarrhoea']],
+       model:"Hello, what seems to be the problem? When did the pain start? Have you had any nausea, vomiting, or diarrhea?"},
+      {type:'interpret',dir:'en2zh',who:'pat',
+       src:"The pain started around my belly button yesterday, then moved to the lower right side. I've vomited twice and I have no appetite.",
+       kw:[['肚脐','脐周','肚子中间'],['转移','移到','跑到'],['右下','右侧'],['吐','呕'],['食欲','胃口','吃不下']],
+       terms:[['转移','转移性']],
+       model:"疼痛昨天从肚脐周围开始，后来转移到了右下腹。他吐了两次，而且没有食欲。"}
+     ]},
+   { icon:'✋', name:'查体床', short:'查体', color:0x9c6ade, intro:'医生让患者躺到查体床上，准备做腹部触诊。',
+     npc:[{role:'doc',x:-1.4,emoji:'👨‍⚕️'},{role:'pat',x:1.2,emoji:'🧑'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"我现在按压您的右下腹，请放松。我松手的时候您告诉我疼不疼——这是在检查有没有反跳痛。",
+       kw:[['press','push','palpate'],['lower right','right lower'],['relax'],['let go','release','when i let'],['rebound']],
+       terms:[['rebound tenderness','rebound']],
+       model:"I'm going to press on your lower right abdomen now—please relax. Tell me if it hurts when I let go; I'm checking for rebound tenderness."},
+      {type:'interpret',dir:'en2zh',who:'pat',
+       src:"Ow! That really hurts, especially when you release your hand. It's a sharp, stabbing pain.",
+       kw:[['疼','痛'],['松手','放手','抬手'],['尤其','特别','更'],['刺痛','针扎','尖锐','锐']],
+       terms:[['刺痛','锐痛']],
+       model:"哎哟！很疼，尤其是您松手的时候。是一种尖锐的刺痛。"}
+     ]},
+   { icon:'🔬', name:'检验影像区', short:'检查', color:0x2ea36b, intro:'医生开检查单，你陪患者去抽血和影像检查，途中患者和你聊起来。',
+     npc:[{role:'doc',x:-1.4,emoji:'🧑‍⚕️'},{role:'pat',x:1.2,emoji:'🧑'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"需要先抽血查血常规和C反应蛋白，再做个腹部B超，必要时做CT，排查急性阑尾炎。",
+       kw:[['blood','draw blood'],['blood count','blood routine','cbc'],['c-reactive','crp'],['ultrasound'],['ct'],['appendicitis']],
+       terms:[['complete blood count','blood routine','cbc'],['c-reactive protein','crp'],['ultrasound'],['ct'],['appendicitis']],
+       model:"We need to draw blood for a complete blood count and C-reactive protein, then do an abdominal ultrasound, and a CT scan if necessary, to rule out acute appendicitis."},
+      {type:'conversation',who:'pat',spk:'外籍患者',
+       src:"While we wait for the results... do you think it's something serious? And how long have you worked as a medical interpreter? You seem really calm.",
+       hint:'用英文得体回应病情顾虑（不下诊断），并简单聊聊你的经验。',
+       topic:[['doctor','results','wait','can\'t say','let the doctor'],['interpreter','years','experience','worked','trained'],['calm','here','don\'t worry','take care','help']],
+       minWords:12,
+       model:"I understand you're worried. Let's wait for the test results before we assume anything — the doctor will explain what's going on. I've worked as a medical interpreter for a few years, so you're in good hands. Try to relax; I'm right here with you."}
+     ]},
+   { icon:'📋', name:'诊断谈话室', short:'诊断', color:0xd8584f, intro:'检查结果出来。医生告知诊断，并谈到手术和知情同意。',
+     npc:[{role:'doc',x:-1.4,emoji:'👨‍⚕️'},{role:'pat',x:1.2,emoji:'🧑'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"结果证实是急性阑尾炎，已经有化脓的迹象，建议尽快做腹腔镜阑尾切除手术，需要您和家属签署手术知情同意书。",
+       kw:[['confirm','result','show'],['acute appendicitis','appendicitis'],['pus','infect','abscess'],['laparoscop','appendectomy','remove the appendix'],['as soon as possible','soon'],['consent','sign']],
+       terms:[['acute appendicitis'],['laparoscopic appendectomy','laparoscopic','appendectomy'],['informed consent','consent']],
+       model:"The results confirm acute appendicitis, with signs of pus formation. We recommend a laparoscopic appendectomy as soon as possible. We'll need you and your family to sign the surgical informed consent form."},
+      {type:'interpret',dir:'en2zh',who:'pat',
+       src:"Surgery? Honestly, I'm really scared. What are the risks? Will I be put under general anesthesia?",
+       kw:[['手术'],['害怕','紧张','担心','怕'],['风险'],['全身麻醉','全麻','麻醉']],
+       terms:[['全身麻醉','全麻'],['风险']],
+       model:"做手术吗？说实话他很害怕。他想知道有哪些风险？会做全身麻醉吗？"},
+      {type:'choice',
+       prompt:'医生面无表情地快速说："这个手术很简单，别紧张，签字吧。" 患者明显非常恐惧、双手发抖。作为陪护翻译，最恰当的处理是？',
+       options:[
+        {t:'A. 准确传达医学信息，同时给予安抚："医生说这是很常规的手术，风险很低。他理解你的担心；我也会全程陪着你，有任何问题随时告诉我。"',s:10,good:true,fb:'最佳。忠实传达核心信息，又照顾情绪并说明陪护角色，体现专业交际口译素养。'},
+        {t:'B. 只字面直译："The doctor says it\'s a simple surgery, don\'t be nervous, just sign."',s:5,good:false,fb:'信息忠实但生硬，未做任何语气调节，交际效果差。'},
+        {t:'C. 替患者拿主意、淡化风险："别担心，绝对没事，签了吧。"',s:1,good:false,fb:'严重失当。隐瞒风险、越权决定，违反口译伦理。'}
+       ]}
+     ]},
+   { icon:'🏠', name:'出院随访处', short:'出院', color:0x12b3a8, intro:'手术顺利，患者康复良好，办理出院。医生交代术后注意事项。',
+     npc:[{role:'doc',x:-1.4,emoji:'👨‍⚕️'},{role:'pat',x:1.2,emoji:'🧑'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"手术很顺利，阑尾已经切除。回去注意保持伤口清洁干燥，一周后来复诊拆线。两周内别提重物，饮食要清淡。",
+       kw:[['went well','smooth','success'],['appendix','removed'],['wound','incision'],['clean','dry'],['follow-up','come back','week'],['stitch','suture'],['heavy','lift'],['light diet','bland']],
+       terms:[['suture','stitch'],['wound','incision'],['follow-up']],
+       model:"The surgery went smoothly and the appendix has been removed. Keep the wound clean and dry, and come back in a week for a follow-up to remove the stitches. Avoid lifting anything heavy for two weeks, and stick to a light diet."},
+      {type:'conversation',who:'pat',spk:'外籍患者',
+       src:"I can't thank you enough — I couldn't have done this without you. I still have a few days here before I fly home. Is there anything light and relaxing you'd recommend while I recover in the city?",
+       hint:'用英文温暖回应感谢，并给几条适合术后休养的轻松建议。',
+       topic:[['you\'re welcome','my pleasure','glad','happy to help'],['rest','relax','take it easy','gentle','walk','park','tea','museum'],['take care','feel better','recover','safe flight']],
+       minWords:12,
+       model:"You're very welcome — I'm really glad I could help. Since you're still recovering, keep it gentle: maybe a slow walk in a park, a quiet teahouse, or a small museum. Get plenty of rest and you'll be ready for your flight home. Take care!"}
+     ]}
+  ]},
+
+/* ---------- 1 急诊抢救 · 急性胸痛 ---------- */
+{ id:'er', icon:'🚑', name:'急诊抢救 · 急性胸痛', tag:'高压', tagColor:'#d8584f',
+  desc:'外籍游客突发剧烈胸痛、疑似急性心梗，与时间赛跑。考验高压下的快速口译与共情。',
+  stations:[
+   { icon:'🚨', name:'预检分诊台', short:'分诊', color:0xd8584f, intro:'一位外籍游客捂着胸口、满头大汗，他的妻子焦急地冲向你求助。',
+     npc:[{role:'nur',x:-1.2,emoji:'🧑‍⚕️'},{role:'pat',x:1.3,emoji:'😰'}],
+     tasks:[
+      {type:'conversation',who:'pat',spk:'外籍家属（妻子）',emoji:'😰',
+       src:"Please, help us! My husband suddenly grabbed his chest, he's sweating and can't breathe properly. It started about twenty minutes ago. What do we do?!",
+       hint:'用英文快速安抚家属，告诉她马上启动抢救、你会全程翻译，并请她配合提供信息。',
+       topic:[['calm','breathe','we\'re here','right away','help','don\'t worry','stay with'],['doctor','nurse','treat','emergency','right now'],['tell me','information','questions','i\'ll translate','answer']],
+       minWords:10,
+       model:"Okay, stay with me and try to stay calm — we're going to help him right away. The medical team is taking over now and I'll translate everything for you. Please answer a few quick questions so they can treat him as fast as possible."},
+      {type:'interpret',dir:'en2zh',who:'pat',spk:'外籍家属',emoji:'😰',
+       src:"He's 58. He has high blood pressure. The chest pain spread to his left arm and jaw, and he's never had anything like this before.",
+       kw:[['58','五十八'],['高血压'],['胸痛','胸口'],['左臂','左胳膊','左手臂','左边手臂'],['下巴','下颌'],['从没','第一次','从来没有','没有']],
+       terms:[['高血压']],
+       model:"他58岁，有高血压。胸痛放射到了左臂和下巴，以前从来没有出现过这种情况。"},
+      {type:'interpret',dir:'zh2en',who:'nur',spk:'分诊护士',
+       src:"立即给他做心电图，建立静脉通道，监测血压和血氧。高度怀疑急性心肌梗死，马上送抢救室！",
+       kw:[['ecg','electrocardiogram','ekg'],['iv','intravenous','line'],['blood pressure'],['oxygen'],['heart attack','myocardial infarction'],['resuscitation','emergency room','er']],
+       terms:[['ecg','electrocardiogram'],['myocardial infarction','heart attack'],['intravenous','iv']],
+       model:"We need to do an ECG immediately, start an intravenous line, and monitor his blood pressure and oxygen. We strongly suspect an acute myocardial infarction — a heart attack — and we're taking him to the resuscitation room right now!"}
+     ]},
+   { icon:'💓', name:'抢救室', short:'抢救', color:0xc0392b, intro:'患者被推入抢救室，监护仪报警声不断，医生紧张地评估。',
+     npc:[{role:'doc',x:-1.4,emoji:'👨‍⚕️'},{role:'pat',x:1.2,emoji:'😣'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"心电图提示急性下壁心肌梗死。先舌下含服硝酸甘油，立刻吸氧，并准备做急诊冠脉造影。",
+       kw:[['ecg','electrocardiogram'],['inferior','下壁'],['myocardial infarction','heart attack'],['nitroglycerin','under the tongue','sublingual'],['oxygen'],['coronary angiography','angiogram','coronary']],
+       terms:[['myocardial infarction','heart attack'],['nitroglycerin'],['coronary angiography','angiogram']],
+       model:"The ECG shows an acute inferior myocardial infarction. We'll give nitroglycerin under the tongue, start oxygen immediately, and prepare for an emergency coronary angiography."},
+      {type:'interpret',dir:'en2zh',who:'pat',spk:'外籍患者',emoji:'😣',
+       src:"The pain is crushing, like an elephant sitting on my chest. I feel like I'm going to pass out.",
+       kw:[['压','压榨','压迫','像大象','沉'],['胸口','胸部','胸'],['晕','昏','要昏过去','快不行']],
+       terms:[['压榨样','压榨性']],
+       model:"他说是压榨样的剧痛，像有头大象压在胸口，感觉自己快要昏过去了。"}
+     ]},
+   { icon:'💉', name:'用药与知情', short:'知情', color:0xe67e22, intro:'医生决定立即手术开通血管，需要家属签署知情同意。',
+     npc:[{role:'doc',x:-1.4,emoji:'👨‍⚕️'},{role:'pat',x:1.2,emoji:'😰'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"需要紧急做支架手术开通堵塞的血管，时间就是心肌，越快越好。手术有出血和心律失常等风险，请家属尽快签署知情同意书。",
+       kw:[['stent'],['open','unblock','restore','blocked','artery','blood vessel'],['time','muscle','heart','as fast','urgent'],['bleeding','hemorrhage'],['arrhythmia','irregular heartbeat'],['consent','sign']],
+       terms:[['stent'],['arrhythmia'],['informed consent','consent']],
+       model:"We need an emergency stent procedure to open the blocked artery — time is muscle, the faster the better. There are risks such as bleeding and arrhythmia. Please sign the informed consent form as soon as possible."},
+      {type:'choice',
+       prompt:'家属极度恐慌，抓着你的手不停追问："他会死吗？告诉我他不会死！" 医生正全力抢救、无暇回答。最恰当的处理是？',
+       options:[
+        {t:'A. 共情+如实+引导："医生正在全力抢救，开通血管是最有效的办法。我知道你非常害怕，等病情稍稳定医生会第一时间向你解释；现在最重要的是保持冷静、尽快签字配合。"',s:10,good:true,fb:'最佳。既安抚情绪、又如实说明、并引导家属做最有帮助的事，未做虚假承诺。'},
+        {t:'B. 冷漠转述："医生没空回答你。"',s:5,good:false,fb:'信息属实但缺乏共情，在危机时刻会加剧家属崩溃。'},
+        {t:'C. 给出虚假保证："放心，他绝对不会有事。"',s:1,good:false,fb:'失当。危急情况下不应替医生做出生死保证，可能引发严重信任与伦理问题。'}
+       ]}
+     ]},
+   { icon:'🛏️', name:'冠心病监护室', short:'监护', color:0x16a085, intro:'支架手术成功，血流恢复。患者转入监护室，妻子终于松了口气。',
+     npc:[{role:'doc',x:-1.4,emoji:'👨‍⚕️'},{role:'pat',x:1.2,emoji:'🥲'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',
+       src:"支架已经放好，堵塞的血管通了，现在转入冠心病监护室继续观察。出院后要长期服用抗血小板药物，并按时复查。",
+       kw:[['stent','placed','put in'],['artery','blood vessel','open','blood flow','restored'],['coronary care','ccu','monitor','observation'],['antiplatelet','blood thinner','aspirin'],['long-term','regularly','follow-up','check-up']],
+       terms:[['stent'],['antiplatelet','blood thinner'],['coronary care unit','ccu']],
+       model:"The stent is in place and the blocked artery is open again, with blood flow restored. He's being moved to the coronary care unit for monitoring. After discharge he'll need to take antiplatelet medication long-term and come back for regular follow-ups."},
+      {type:'conversation',who:'pat',spk:'外籍家属（妻子）',emoji:'🥲',
+       src:"Thank you so much — I was absolutely terrified. Will he be okay in the long run? Is there anything we should change about his lifestyle to prevent this happening again?",
+       hint:'用英文安抚并转达一般性生活方式建议（戒烟、低盐低脂、按时服药、规律复查），不下诊断。',
+       topic:[['glad','better','recovering','good hands','reassure','relieved'],['quit smoking','low salt','low fat','diet','exercise','stress','lifestyle'],['medication','take his meds','follow-up','check-up','doctor will explain']],
+       minWords:12,
+       model:"You did really well, and he's in good hands now. The doctor expects a good recovery. For the long term, the main things are usually taking his medication every day, eating a low-salt, low-fat diet, quitting smoking, gentle exercise, and managing stress. The cardiologist will give you a detailed plan and follow-up schedule."}
+     ]}
+  ]},
+
+/* ---------- 2 儿科 · 高热皮疹 ---------- */
+{ id:'ped', icon:'🧸', name:'儿科 · 高热皮疹', tag:'三方沟通', tagColor:'#9b59b6',
+  desc:'四岁外籍女童高热出疹，需在儿科医生与英语家长之间三方沟通，涉及剂量与安抚。',
+  stations:[
+   { icon:'🧸', name:'儿科分诊', short:'分诊', color:0x9b59b6, intro:'一位英语妈妈抱着发烫的小女孩，孩子无精打采，妈妈非常担心。',
+     npc:[{role:'nur',x:-1.2,emoji:'💁'},{role:'pat',x:1.3,emoji:'👩'}],
+     tasks:[
+      {type:'conversation',who:'pat',spk:'外籍家长（妈妈）',emoji:'👩',
+       src:"My daughter is four. She's had a high fever for two days, and now there are red spots on her chest. She's very sleepy and won't eat. I'm so worried — is she going to be alright?",
+       hint:'用英文安抚妈妈，告诉她很快会看儿科医生、你会全程翻译，请她保持镇定。',
+       topic:[['understand','worried','calm','here','don\'t worry','reassure'],['pediatrician','doctor','see','soon','right away','examine'],['translate','with you','help','answer','questions']],
+       minWords:10,
+       model:"I understand how worried you are, but you've come to the right place. The pediatrician will see her very soon and examine her carefully, and I'll translate everything so you understand each step. Try to stay calm — children pick up on our worry. I'm right here with you."},
+      {type:'interpret',dir:'en2zh',who:'pat',spk:'外籍家长',emoji:'👩',
+       src:"Her temperature reached 39.5 last night. I gave her some ibuprofen but it only helped a little. And she's allergic to penicillin.",
+       kw:[['39.5','39','体温','烧到'],['昨晚','昨天晚上','夜里'],['布洛芬','退烧药'],['一点','效果不大','作用不大','只好一点'],['青霉素','盘尼西林'],['过敏']],
+       terms:[['布洛芬'],['青霉素','过敏']],
+       model:"她昨晚体温烧到了39.5度。妈妈给她吃了一些布洛芬，但效果不大。另外孩子对青霉素过敏。"},
+      {type:'interpret',dir:'zh2en',who:'nur',spk:'分诊护士',
+       src:"先给孩子量体温和血氧，做个全身检查。请问孩子按时打疫苗了吗？最近有没有接触过出疹子的小朋友？",
+       kw:[['temperature'],['oxygen','oxygen level','spo2'],['examine','check','full','head to toe'],['vaccin','immuniz','shots'],['contact','around','exposed'],['rash','spots']],
+       terms:[['vaccination','vaccinated','immunization']],
+       model:"First we'll take her temperature and oxygen level and do a full examination. Has she had all her vaccinations on schedule? Has she recently been in contact with any children who had a rash?"}
+     ]},
+   { icon:'🩺', name:'儿科诊室', short:'问诊', color:0x8e44ad, intro:'儿科医生仔细询问病情，并考虑需要排查的几种疾病。',
+     npc:[{role:'doc',x:-1.4,emoji:'👩‍⚕️'},{role:'pat',x:1.2,emoji:'👩'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',spk:'儿科医生',emoji:'👩‍⚕️',
+       src:"孩子可能是病毒感染引起的发烧和皮疹，但要排除幼儿急疹、麻疹和川崎病。先查个血常规和C反应蛋白。",
+       kw:[['viral','virus','infection'],['fever'],['rash'],['rule out','exclude'],['roseola'],['measles'],['kawasaki'],['blood count','blood routine','cbc'],['c-reactive','crp']],
+       terms:[['roseola'],['measles'],['kawasaki'],['complete blood count','blood routine','cbc']],
+       model:"This is likely a viral infection causing the fever and rash, but we need to rule out roseola, measles, and Kawasaki disease. Let's start with a complete blood count and C-reactive protein."},
+      {type:'interpret',dir:'en2zh',who:'pat',spk:'外籍家长',emoji:'👩',
+       src:"Is it contagious? Should I keep my other son away from her? And can a fever this high cause any brain damage?",
+       kw:[['传染','传染性'],['隔离','分开','远离','避免接触'],['儿子','另一个','哥哥','弟弟','孩子'],['高烧','发烧','体温','烧'],['脑','脑损伤','大脑','烧坏']],
+       terms:[['传染']],
+       model:"她问这个病传染吗？要不要让她的儿子和妹妹隔离开？还有，烧得这么高会不会造成脑损伤？"}
+     ]},
+   { icon:'🌡️', name:'查体安抚', short:'查体', color:0xaf7ac5, intro:'医生要给哭闹的孩子做检查，妈妈希望你帮忙安抚解释。',
+     npc:[{role:'doc',x:-1.4,emoji:'👩‍⚕️'},{role:'pat',x:1.2,emoji:'🧒'}],
+     tasks:[
+      {type:'conversation',who:'pat',spk:'外籍家长（妈妈）',emoji:'👩',
+       src:"She's terrified of doctors and she's crying. Can you tell me what he's doing so I can gently explain it to her and help her stay still?",
+       hint:'用英文温柔解释医生的动作（看喉咙、耳朵），说明不会疼，帮妈妈安抚孩子。',
+       topic:[['won\'t hurt','doesn\'t hurt','gentle','quick','okay','brave'],['throat','ears','look','listen','tummy','check'],['hold her','comfort','stay still','calm','tell her']],
+       minWords:12,
+       model:"Of course. Right now the doctor is just gently looking inside her mouth and her ears with a little light, and then he'll listen to her chest — none of it hurts at all, it just feels a bit ticklish. You can hold her hand and tell her she's being very brave, and it will be over in a minute."},
+      {type:'interpret',dir:'zh2en',who:'doc',spk:'儿科医生',emoji:'👩‍⚕️',
+       src:"咽部有点红，耳膜正常，颈部淋巴结轻度肿大。皮疹是玫瑰色的、压之褪色。先物理降温，多喝水，注意观察。",
+       kw:[['throat','pharynx','red'],['eardrum','tympanic','normal'],['lymph node','neck','swollen','enlarged'],['rash','rose','pink'],['fade','blanch','press'],['physical cooling','cool','sponge','lukewarm'],['fluids','water','drink']],
+       terms:[['lymph node'],['eardrum','tympanic membrane']],
+       model:"Her throat is a little red, the eardrums are normal, and the lymph nodes in her neck are slightly swollen. The rash is rose-colored and fades when you press on it. For now, use physical cooling, give her plenty of fluids, and keep an eye on her."}
+     ]},
+   { icon:'💊', name:'诊断用药', short:'用药', color:0x6c3483, intro:'结果回报，医生给出诊断并仔细交代退烧药的剂量。',
+     npc:[{role:'doc',x:-1.4,emoji:'👩‍⚕️'},{role:'pat',x:1.2,emoji:'👩'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',spk:'儿科医生',emoji:'👩‍⚕️',
+       src:"考虑是幼儿急疹，属于自限性疾病，大多三到五天会自行好转。退烧用对乙酰氨基酚，按体重每次10到15毫克每公斤，间隔至少六小时。",
+       kw:[['roseola'],['self-limit','resolve on its own','go away on its own'],['three to five days','3 to 5 days','few days'],['acetaminophen','paracetamol','tylenol'],['weight','by weight','per kilo'],['10','15','milligram','mg'],['six hours','6 hours']],
+       terms:[['roseola'],['acetaminophen','paracetamol'],['self-limiting','self-limited']],
+       model:"This looks like roseola, which is a self-limiting illness — it usually resolves on its own in three to five days. For the fever, use acetaminophen, dosed by weight at 10 to 15 milligrams per kilogram, at least six hours apart."},
+      {type:'interpret',dir:'en2zh',who:'pat',spk:'外籍家长',emoji:'👩',
+       src:"So she doesn't need antibiotics? When should I bring her back, and what danger signs should I watch out for?",
+       kw:[['抗生素'],['不需要','不用','无需'],['什么时候','多久','何时'],['复诊','带回来','再来'],['危险','警示','信号','征兆'],['注意','观察','留意']],
+       terms:[['抗生素']],
+       model:"所以她不需要用抗生素吗？什么时候要带她回来复诊？另外有哪些危险信号需要我特别注意观察？"}
+     ]}
+  ]},
+
+/* ---------- 3 产科 · 临产分娩 ---------- */
+{ id:'ob', icon:'🤰', name:'产科 · 临产分娩', tag:'高情感', tagColor:'#e84393',
+  desc:'39周外籍孕妇规律宫缩入院待产，涉及产检术语、分娩知情与强烈情绪安抚。',
+  stations:[
+   { icon:'🤰', name:'产科接诊', short:'接诊', color:0xe84393, intro:'一位临近预产期的外籍孕妇扶着腰走进来，神情既兴奋又害怕。',
+     npc:[{role:'nur',x:-1.2,emoji:'👩‍⚕️'},{role:'pat',x:1.3,emoji:'🤰'}],
+     tasks:[
+      {type:'conversation',who:'pat',spk:'外籍孕妇',emoji:'🤰',
+       src:"I'm 39 weeks pregnant and I've been having contractions every five minutes for the past two hours. My water hasn't broken yet. This is my first baby and I'm really scared.",
+       hint:'用英文安抚孕妇，肯定她做得对（及时就诊），说明助产士会检查、你会全程陪同翻译。',
+       topic:[['right place','well done','good','came in','timing'],['midwife','doctor','check','examine','assess','monitor'],['with you','translate','calm','breathe','you can do this','support']],
+       minWords:12,
+       model:"You did exactly the right thing by coming in — five minutes apart is a good time to be here. Try to breathe slowly through each contraction. The midwife is going to check you and the baby now, and I'll stay with you and translate everything. You're not alone, and you can do this."},
+      {type:'interpret',dir:'en2zh',who:'pat',spk:'外籍孕妇',emoji:'🤰',
+       src:"The contractions are getting stronger and closer together. I also noticed some pink, bloody mucus this morning. The baby has been moving normally.",
+       kw:[['宫缩','阵痛','收缩'],['越来越强','更强','更剧烈'],['越来越近','频繁','更密','越来越频繁'],['粉红','见红','血丝','黏液'],['早上','今早','上午'],['胎动','宝宝','动','正常']],
+       terms:[['宫缩'],['见红']],
+       model:"她的宫缩越来越强、也越来越频繁。今天早上她还发现有一些粉红色带血的黏液，也就是见红。宝宝的胎动一直正常。"},
+      {type:'interpret',dir:'zh2en',who:'nur',spk:'助产士',emoji:'👩‍⚕️',
+       src:"我先听一下胎心、量血压，做个内检看看宫口开了几指，再用胎心监护观察一下宫缩。",
+       kw:[['fetal heart','baby\'s heartbeat','heart rate'],['blood pressure'],['internal exam','vaginal exam','examine'],['cervix','dilat','how many','open'],['fetal monitor','ctg','monitor'],['contraction']],
+       terms:[['fetal heart rate','fetal heart'],['cervical dilation','dilation','cervix'],['fetal monitor','ctg']],
+       model:"First I'll listen to the fetal heart rate and check your blood pressure, then do an internal exam to see how far your cervix has dilated, and put you on the fetal monitor to watch the contractions."}
+     ]},
+   { icon:'📈', name:'产检评估', short:'产检', color:0xc0399b, intro:'助产士完成检查，医生过来解读产检结果。',
+     npc:[{role:'doc',x:-1.4,emoji:'👩‍⚕️'},{role:'pat',x:1.2,emoji:'🤰'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',spk:'产科医生',emoji:'👩‍⚕️',
+       src:"胎心率每分钟140次，正常。宫口已经开了三公分，胎位是头位。不过血压偏高，要注意排除妊娠期高血压。",
+       kw:[['fetal heart','heart rate','140'],['normal'],['cervix','dilat','three','3','cm','centimeter'],['cephalic','head','head-down','head first'],['blood pressure','high','elevated'],['gestational hypertension','pregnancy-induced','rule out']],
+       terms:[['fetal heart rate'],['cephalic presentation','cephalic','head-down'],['gestational hypertension']],
+       model:"The fetal heart rate is 140 beats per minute, which is normal. Your cervix is already dilated to three centimeters, and the baby is in a head-down, cephalic position. However, your blood pressure is a bit high, so we need to watch for and rule out gestational hypertension."},
+      {type:'interpret',dir:'en2zh',who:'pat',spk:'外籍孕妇',emoji:'🤰',
+       src:"Will I be able to have a natural birth? And can I get an epidural for the pain when I really need it?",
+       kw:[['顺产','自然分娩','顺产分娩'],['可以','能不能','行不行'],['无痛','硬膜外'],['止痛','疼','镇痛'],['需要','想要','到时候']],
+       terms:[['硬膜外','无痛分娩'],['顺产','自然分娩']],
+       model:"她想问自己能不能顺产、自然分娩？另外等她真的需要的时候，可以打无痛、做硬膜外麻醉来止痛吗？"}
+     ]},
+   { icon:'📋', name:'分娩知情', short:'知情', color:0xa93271, intro:'产程进展中，医生说明分娩方案并谈知情同意。',
+     npc:[{role:'doc',x:-1.4,emoji:'👩‍⚕️'},{role:'pat',x:1.2,emoji:'🤰'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',spk:'产科医生',emoji:'👩‍⚕️',
+       src:"目前进展顺利，建议先尝试顺产。如果出现胎儿窘迫或产程停滞，可能需要紧急剖宫产，请先签署知情同意书。",
+       kw:[['progress','going well','smooth'],['try','attempt','vaginal birth','natural birth'],['fetal distress','baby in distress','abnormal fetal heart'],['labor','stall','no progress','not progressing'],['emergency','cesarean','c-section'],['consent','sign']],
+       terms:[['cesarean section','c-section'],['fetal distress'],['informed consent','consent']],
+       model:"Everything is progressing well, so we recommend trying for a vaginal birth first. If the baby shows signs of fetal distress or labor stalls and stops progressing, we may need an emergency cesarean section, so please sign the informed consent form now."},
+      {type:'choice',
+       prompt:'产妇宫缩剧痛、大喊大叫，紧紧抓住你："I can\'t take it anymore, I want a C-section right now!" 而医生评估认为可以继续顺产。最恰当的处理是？',
+       options:[
+        {t:'A. 先共情、再准确双向传达："我知道你现在痛得受不了，这很正常、你做得很好。医生说目前一切顺利、宝宝情况很好，建议再坚持一下；当然，如果你坚持要求剖宫产或情况有变，会立即安排。你要我把你的请求正式转达给医生吗？"',s:10,good:true,fb:'最佳。既安抚共情，又如实转达医生评估、并尊重产妇自主权，把决定权交还给她。'},
+        {t:'B. 只对医生说"她要剖腹产"，不传达医生的评估意见。',s:4,good:false,fb:'信息单向且不完整，剥夺了产妇在知情下做决定的机会。'},
+        {t:'C. 训斥产妇："忍一下，别喊了，听医生的。"',s:1,good:false,fb:'严重失当。指责产妇、否定其感受，违背以患者为中心与共情原则。'}
+       ]}
+     ]},
+   { icon:'👶', name:'产后病房', short:'产后', color:0x884ea0, intro:'母女平安。新妈妈抱着宝宝，激动得热泪盈眶。',
+     npc:[{role:'doc',x:-1.4,emoji:'👩‍⚕️'},{role:'pat',x:1.2,emoji:'🥹'}],
+     tasks:[
+      {type:'interpret',dir:'zh2en',who:'doc',spk:'助产士',emoji:'👩‍⚕️',
+       src:"母女平安，是个健康的女宝宝，三千六百克。建议尽早开奶、多和宝宝皮肤接触，产后要注意观察出血情况。",
+       kw:[['mother','baby','well','safe','fine'],['healthy','baby girl','girl'],['weight','3600','3,600','grams','gram'],['breastfeed','start feeding','nursing','milk'],['skin-to-skin','skin to skin','contact'],['watch','monitor','bleeding','blood loss']],
+       terms:[['breastfeeding','breastfeed'],['skin-to-skin'],['postpartum bleeding','bleeding','hemorrhage']],
+       model:"Both mother and baby are doing well. It's a healthy baby girl weighing 3,600 grams. We recommend starting breastfeeding early and plenty of skin-to-skin contact, and we'll watch closely for any postpartum bleeding."},
+      {type:'conversation',who:'pat',spk:'新妈妈',emoji:'🥹',
+       src:"Thank you — I honestly couldn't have done it without you translating everything. When can I start breastfeeding? And is it normal to feel this emotional right now?",
+       hint:'用英文祝贺新妈妈，说明可以很快开始母乳、并安抚她产后情绪波动是完全正常的。',
+       topic:[['congratulations','well done','proud','my pleasure','glad'],['breastfeed','feed','soon','now','nurse'],['normal','emotional','hormones','okay to cry','feelings','rest']],
+       minWords:12,
+       model:"Congratulations — you did amazing, and it was my pleasure. You can start breastfeeding very soon, often within the first hour, and the midwife will help you with the latch. And yes, feeling this emotional and even tearful is completely normal right now — it's the hormones and the huge moment you've just been through. Rest and enjoy your baby."}
+     ]}
+  ]}
+];
+
+/* ===== 评分累计 + 逐项记录 ===== */
+const score={fluency:{got:0,max:0},accuracy:{got:0,max:0},terminology:{got:0,max:0},empathy:{got:0,max:0}};
+const record=[];
+let STATIONS=[], curScenario=null, studentName='', difficulty='easy';
+function setDiff(d,btn){difficulty=d;document.querySelectorAll('#diffSel .diff').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+const animatedNPCs=[], walkers=[];
+let talking=false, curSpeakerMesh=null, hintUsed=false, curAudio=null;
+const AUDIO_BASE='audio/';   // 把真人录音(mp3)放到与本文件同级的 audio/ 文件夹，命名见录音清单
+const AUDIO_MANIFEST={};      // 或在此手动映射 { '场景id_工位号_任务号':'文件URL.mp3' }
+// ===== 云端语音 · 已配置小米 MiMo TTS =====
+// 密钥不再内嵌：由开始界面的输入框在运行时填入，仅保存在使用者本机浏览器(localStorage)。
+let MIMO_KEY='';
+let lastTTS='(未调用)';       // 诊断：最近一次云端TTS结果
+function applyVoiceSettings(){
+  const k=document.getElementById('keyInput'); if(k) MIMO_KEY=(k.value||'').trim();
+  const ep=document.getElementById('endpointInput'); if(ep&&ep.value.trim()) CLOUD_TTS.endpoint=ep.value.trim();
+  try{localStorage.setItem('mimo_key',MIMO_KEY);localStorage.setItem('mimo_ep',CLOUD_TTS.endpoint);}catch(_){}
+}
+const CLOUD_TTS={
+  enabled:true,
+  // 联网即用：把本网页放到任意网站/服务器(http/https)打开，若 MiMo 接口放行跨域，浏览器会直接调用→出真人音，用户无需装任何东西。
+  // 注意：用本地 file:// 双击打开、或接口未放行跨域(CORS)时，浏览器会拦截→退回机器音；此时改用下面 endpointProxy 并部署一次随附代理。
+  endpoint:'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', // 联网直连 MiMo
+  endpointProxy:'http://localhost:8787', // 备用：被跨域拦截时改用随附 mimo-tts-proxy.js
+  model:'mimo-v2-tts',
+  voiceOf:(lang,gender)=> (lang&&lang.slice(0,2)==='zh') ? 'default_zh' : 'default_en',  // MiMo仅这几种：mimo_default/default_zh/default_en
+  buildRequest:function(text,lang,gender){return{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+MIMO_KEY},body:JSON.stringify({
+    model:this.model,
+    messages:[{role:'user',content:'请自然地朗读下面这句话。'},{role:'assistant',content:text}],
+    audio:{format:'wav',voice:this.voiceOf(lang,gender)}
+  })};},
+  parse:async(r)=>{const j=await r.json();const b64=j&&j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.audio&&j.choices[0].message.audio.data;
+    if(!b64)return null;const bin=atob(b64);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([arr],{type:'audio/wav'}));}
+};
+async function fetchCloudTTS(text,lang,gender){
+  if(!CLOUD_TTS.enabled||!CLOUD_TTS.endpoint){lastTTS='未启用';return null;}
+  if(!MIMO_KEY){lastTTS='未填写 API Key（留空则用浏览器语音）';return null;}
+  try{const r=await fetch(CLOUD_TTS.endpoint,CLOUD_TTS.buildRequest(text,lang,gender));
+    if(!r.ok){lastTTS='HTTP '+r.status;return null;}
+    const u=await CLOUD_TTS.parse(r); lastTTS=u?'成功':'响应无音频数据'; return u;
+  }catch(e){lastTTS='请求失败(多为浏览器跨域CORS，需用代理)：'+(e&&e.message||e);return null;}
+}
+let USE_LOCAL_AUDIO=false;    // 有真人录音时设 true（会先找 audio/<id>.mp3）
+let audioUnlocked=false;
+function primeAudio(){if(audioUnlocked)return;audioUnlocked=true;try{if(ttsOK){speechSynthesis.resume();const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);}}catch(_){}}
+let viewMode='fps';          // fps 第一人称 / tps 第三人称，空格键切换
+
+let scene,camera,renderer,clock;
+let yaw=0,pitch=0;
+const player={x:0,z:30,h:1.6};
+const keys={};
+let controlsEnabled=false,dialogOpen=false,built=false;
+let BOUND={x:18,zMin:-40,zMax:34};
+
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function makeLabelSprite(text,bg,w,h){
+  const cv=document.createElement('canvas');cv.width=256;cv.height=128;
+  const ctx=cv.getContext('2d');ctx.fillStyle=bg||'rgba(14,143,143,.92)';roundRect(ctx,4,30,248,68,16);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 30px "PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,128,64);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true}));
+  sp.scale.set(w||4.4,h||2.2,1);return sp;
+}
+function makeNPC(role,emoji,opts){
+  opts=opts||{};
+  const g=new THREE.Group();
+  const medic=(role==='doc'||role==='nur'||role==='tec');   // 医护/译员：披白大褂
+  const skinTones=[0xf3d2b3,0xe8b98c,0xd6a074,0xf6dcc3];
+  const skin=opts.skin||skinTones[(Math.random()*skinTones.length)|0];
+  const shirts=[0x6ea8e0,0x6fbfa0,0xe0a15a,0xa98fd0,0xd98a8a,0x5cb0c9,0xe6c34e,0x8aa0b5];
+  const coatCol=(role==='nur')?0xfce6f0:0xffffff;           // 白大褂（护士浅粉）
+  const cloth=medic?coatCol:(opts.cloth||shirts[(Math.random()*shirts.length)|0]);
+  const hairCols=[0x271f1b,0x3b2a1e,0x141414,0x5a4634];
+  const clothMat=new THREE.MeshLambertMaterial({color:cloth});
+  const skinMat=new THREE.MeshLambertMaterial({color:skin});
+  const pantsMat=new THREE.MeshLambertMaterial({color:opts.pants||(medic?0xe8edf2:0x3d4650)});
+  // 腿
+  const ll=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.8,10),pantsMat);ll.position.set(-0.13,0.4,0);g.add(ll);
+  const rl=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.8,10),pantsMat);rl.position.set(0.13,0.4,0);g.add(rl);
+  // 躯干 + 肩
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.33,0.85,16),clothMat);torso.position.y=1.2;g.add(torso);
+  const shoulders=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.28,0.16,16),clothMat);shoulders.position.y=1.56;g.add(shoulders);
+  // 白大褂：下摆 + 内搭衬衫 + 纽扣 + 胸牌
+  if(medic){
+    const hem=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.42,0.6,16,1,true),new THREE.MeshLambertMaterial({color:coatCol,side:THREE.DoubleSide}));hem.position.y=0.72;g.add(hem);
+    const inner=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.24,0.55,12),new THREE.MeshLambertMaterial({color:0x2e6fa8}));inner.position.set(0,1.28,0.06);inner.scale.set(1,1,0.5);g.add(inner);
+    for(let b=0;b<3;b++){const bt=new THREE.Mesh(new THREE.SphereGeometry(0.016,6,6),new THREE.MeshBasicMaterial({color:0xc3ccd4}));bt.position.set(0,1.36-b*0.17,0.3);g.add(bt);}
+    const badge=new THREE.Mesh(new THREE.PlaneGeometry(0.13,0.09),new THREE.MeshBasicMaterial({color:0xb21e2a}));badge.position.set(0.17,1.43,0.29);g.add(badge);
+  }
+  // 手臂 + 手
+  const la=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.062,0.74,8),clothMat);la.position.set(-0.34,1.2,0);la.rotation.z=0.1;g.add(la);
+  const ra=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.062,0.74,8),clothMat);ra.position.set(0.34,1.2,0);ra.rotation.z=-0.1;g.add(ra);
+  [-0.4,0.4].forEach(hx=>{const hd=new THREE.Mesh(new THREE.SphereGeometry(0.062,10,10),skinMat);hd.position.set(hx,0.84,0);g.add(hd);});
+  // 脖子 + 头
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.13,8),skinMat);neck.position.y=1.7;g.add(neck);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.235,20,20),skinMat);head.position.y=1.93;head.scale.set(1,1.12,1.02);g.add(head);
+  const ears=new THREE.MeshLambertMaterial({color:skin});
+  [-0.235,0.235].forEach(ex=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.04,8,8),ears);e.position.set(ex,1.92,0);e.scale.set(0.5,1,0.7);g.add(e);});
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(0.253,18,18,0,Math.PI*2,0,Math.PI*0.6),new THREE.MeshLambertMaterial({color:opts.hair||hairCols[(Math.random()*hairCols.length)|0]}));hair.position.set(0,1.99,-0.012);g.add(hair);
+  // 眼睛：眼白 + 瞳孔 + 眉毛
+  const whiteMat=new THREE.MeshBasicMaterial({color:0xffffff}),pupilMat=new THREE.MeshBasicMaterial({color:0x2a2118}),browMat=new THREE.MeshBasicMaterial({color:0x3a2c22});
+  [-0.085,0.085].forEach(ex=>{
+    const eb=new THREE.Mesh(new THREE.SphereGeometry(0.038,12,12),whiteMat);eb.position.set(ex,1.955,0.196);eb.scale.set(1,1.18,0.55);g.add(eb);
+    const pp=new THREE.Mesh(new THREE.SphereGeometry(0.019,10,10),pupilMat);pp.position.set(ex,1.955,0.223);g.add(pp);
+    const brow=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.015,0.02),browMat);brow.position.set(ex,2.012,0.202);g.add(brow);
+  });
+  // 鼻子
+  const nose=new THREE.Mesh(new THREE.ConeGeometry(0.032,0.1,8),skinMat);nose.rotation.x=Math.PI/2;nose.position.set(0,1.9,0.23);g.add(nose);
+  // 嘴（说话时张合）
+  const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.028,0.02),new THREE.MeshBasicMaterial({color:0xa9635a}));mouth.position.set(0,1.842,0.214);g.add(mouth);
+  g.userData.mouth=mouth;g.userData.legs=[ll,rl];g.userData.arms=[la,ra];
+  // 医生听诊器
+  if(role==='doc'){const st=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.016,6,20,Math.PI),new THREE.MeshBasicMaterial({color:0x2b6fb0}));st.position.set(0,1.5,0.28);g.add(st);
+    const chest=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.02,10),new THREE.MeshBasicMaterial({color:0x9fb6c9}));chest.rotation.x=Math.PI/2;chest.position.set(0.07,1.3,0.3);g.add(chest);}
+  // 头顶身份小图标
+  if(emoji){const cv=document.createElement('canvas');cv.width=64;cv.height=64;const ctx=cv.getContext('2d');ctx.font='44px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(emoji,32,38);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true}));sp.scale.set(0.56,0.56,1);sp.position.y=2.52;g.add(sp);}
+  return g;
+}
+function initScene(){
+  scene=new THREE.Scene();scene.background=new THREE.Color(0xe9f4f4);scene.fog=new THREE.Fog(0xe9f4f4,42,98);
+  camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.1,300);
+  renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+  renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  clock=new THREE.Clock();
+  scene.add(new THREE.AmbientLight(0xfff4e8,0.64));
+  scene.add(new THREE.HemisphereLight(0xffffff,0xccd8da,0.72));
+  const dir=new THREE.DirectionalLight(0xfff1de,0.5);dir.position.set(12,22,10);scene.add(dir);
+  const n=STATIONS.length;
+  STATIONS.forEach((s,i)=>{ s.pos=[ i%2===0?-10:10, 22-i*10.5 ]; s.done=false; s.ti=0; });
+  const lastZ=22-(n-1)*10.5; BOUND.zMin=lastZ-5;
+  const zNear=34, zFar=lastZ-8, D=zNear-zFar, cz=(zNear+zFar)/2, W=40;
+  // --- tiled floor ---
+  const ftex=(function(){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');
+    x.fillStyle='#eef4f5';x.fillRect(0,0,128,128);x.strokeStyle='#dde9ea';x.lineWidth=4;x.strokeRect(0,0,128,128);
+    x.strokeStyle='#e6eff0';x.lineWidth=2;x.beginPath();x.moveTo(64,0);x.lineTo(64,128);x.moveTo(0,64);x.lineTo(128,64);x.stroke();
+    const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(W/2,D/2);return t;})();
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(W,D),new THREE.MeshLambertMaterial({map:ftex}));
+  floor.rotation.x=-Math.PI/2;floor.position.z=cz;scene.add(floor);
+  const lane=new THREE.Mesh(new THREE.PlaneGeometry(2.0,D-6),new THREE.MeshBasicMaterial({color:0x9fded9,transparent:true,opacity:0.45}));
+  lane.rotation.x=-Math.PI/2;lane.position.set(0,0.02,cz);scene.add(lane);
+  // --- ceiling + light panels ---
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(W,D),new THREE.MeshLambertMaterial({color:0xf4fafa}));
+  ceil.rotation.x=Math.PI/2;ceil.position.set(0,4.4,cz);scene.add(ceil);
+  for(let z=zNear-4;z>zFar+2;z-=7.5){[-7,7].forEach(px=>{
+    const pan=new THREE.Mesh(new THREE.PlaneGeometry(2.6,3.4),new THREE.MeshBasicMaterial({color:0xffffff}));
+    pan.rotation.x=Math.PI/2;pan.position.set(px,4.36,z);scene.add(pan);
+    const pl=new THREE.PointLight(0xffffff,0.22,20);pl.position.set(px,3.9,z);scene.add(pl);});}
+  // --- walls: upper + lower wainscot + accent + windows ---
+  const wUp=new THREE.MeshLambertMaterial({color:0xeaf2f2}),wLow=new THREE.MeshLambertMaterial({color:0xb6d2d2});
+  function box(w,h,d,x,y,z,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);scene.add(m);return m;}
+  box(W,4.4,0.3,0,2.2,zFar,wUp); box(W,1.1,0.36,0,0.55,zFar,wLow);
+  box(W,4.4,0.3,0,2.2,zNear,wUp);
+  [-W/2,W/2].forEach(wx=>{ box(0.3,4.4,D,wx,2.2,cz,wUp); box(0.36,1.1,D,wx,0.55,cz,wLow);
+    box(0.08,0.16,D,wx+(wx<0?0.18:-0.18),1.65,cz,new THREE.MeshBasicMaterial({color:0x0e8f8f})); });
+  // windows on side walls
+  for(let z=zNear-7;z>zFar+5;z-=11){[-W/2,W/2].forEach(wx=>{
+    const win=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.2),new THREE.MeshBasicMaterial({color:0xcfeefb}));
+    win.rotation.y=wx<0?Math.PI/2:-Math.PI/2;win.position.set(wx+(wx<0?0.2:-0.2),2.6,z);scene.add(win);
+    const fr=new THREE.Mesh(new THREE.PlaneGeometry(2.9,2.3),new THREE.MeshBasicMaterial({color:0x9fc6d8}));
+    fr.rotation.y=win.rotation.y;fr.position.set(wx+(wx<0?0.16:-0.16),2.6,z);scene.add(fr);win.renderOrder=1;});}
+  // ===== 南方医院 门诊大厅 装潢（红白·惠侨红军队传承）=====
+  function signPlane(lines,bg,fg,w,h){
+    const cw=512,ch=Math.round(512*h/w);const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d');
+    if(bg){x.fillStyle=bg;x.fillRect(0,0,cw,ch);}x.textAlign='center';x.textBaseline='middle';
+    lines.forEach((ln,i)=>{x.fillStyle=ln.c||fg;x.font='bold '+(ln.s||40)+'px "Microsoft YaHei","PingFang SC",sans-serif';x.fillText(ln.t,cw/2,ch*(i+1)/(lines.length+1));});
+    const tex=new THREE.CanvasTexture(c);return new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex,transparent:true}));
+  }
+  const ent=makeLabelSprite('🏥 '+curScenario.name.split(' · ')[0],'rgba(20,60,80,.92)',6.4,3.0);ent.position.set(0,3.75,zNear-0.4);scene.add(ent);
+  const banner=signPlane([{t:'南方医院',s:96},{t:'NANFANG HOSPITAL',s:40}],'#b21e2a','#ffffff',11,2.6);banner.position.set(0,3.0,zFar+0.18);scene.add(banner);
+  const hall=makeLabelSprite('门诊大厅 OUTPATIENT HALL','rgba(14,120,120,.9)',6.2,1.6);hall.position.set(0,2.25,zNear-6);scene.add(hall);
+  // 立柱（红色柱裙）
+  for(let z=zNear-6;z>zFar+4;z-=9){[-W/2+3,W/2-3].forEach(cxp=>{
+    const col=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.55,4.3,16),new THREE.MeshLambertMaterial({color:0xf3f6f6}));col.position.set(cxp,2.15,z);scene.add(col);
+    const band=new THREE.Mesh(new THREE.CylinderGeometry(0.53,0.53,0.25,16),new THREE.MeshBasicMaterial({color:0xb21e2a}));band.position.set(cxp,0.62,z);scene.add(band);});}
+  // 分诊导诊台（入口右前）
+  const cBase=new THREE.Mesh(new THREE.BoxGeometry(5,1.05,1.4),new THREE.MeshLambertMaterial({color:0xdfe9e9}));cBase.position.set(7,0.52,zNear-9);scene.add(cBase);
+  const cTop=new THREE.Mesh(new THREE.BoxGeometry(5.3,0.12,1.6),new THREE.MeshLambertMaterial({color:0xeef6f6}));cTop.position.set(7,1.08,zNear-9);scene.add(cTop);
+  const tri=makeLabelSprite('分诊导诊台 TRIAGE','rgba(14,143,143,.95)',3.4,1.5);tri.position.set(7,2.25,zNear-9);scene.add(tri);
+  // 自助挂号缴费机（入口左前）
+  for(let k=0;k<3;k++){const kx=-8+k*1.1;
+    const kb=new THREE.Mesh(new THREE.BoxGeometry(0.9,1.9,0.5),new THREE.MeshLambertMaterial({color:0xd7e0e6}));kb.position.set(kx,0.95,zNear-9);scene.add(kb);
+    const scr=new THREE.Mesh(new THREE.PlaneGeometry(0.68,0.88),new THREE.MeshBasicMaterial({color:0x12406a}));scr.position.set(kx,1.15,zNear-9.26);scene.add(scr);}
+  const ksign=makeLabelSprite('自助挂号缴费机','rgba(46,109,164,.95)',3.0,1.4);ksign.position.set(-7,2.25,zNear-9);scene.add(ksign);
+  // 科室索引板（左墙）
+  const dirLines=[{t:'科 室 索 引',s:46,c:'#b21e2a'}].concat(STATIONS.map((s,i)=>({t:(i+1)+'  '+s.name,s:30,c:'#22343f'})));
+  const dirBoard=signPlane(dirLines,'#ffffff','#22343f',3.0,3.8);dirBoard.rotation.y=Math.PI/2;dirBoard.position.set(-W/2+0.22,2.5,zNear-14);scene.add(dirBoard);
+  // 叫号屏（走廊中部）
+  const led=signPlane([{t:'叫号 CALLING',s:30,c:'#39ff9a'},{t:'A016 → 3 诊室',s:48,c:'#39ff9a'},{t:'A017 → 5 诊室',s:34,c:'#7fe8b6'}],'#07160f','#39ff9a',3.6,1.9);led.position.set(0,3.05,cz+2);scene.add(led);
+  // 药房 绿十字（右侧近末端）
+  const rx=makeLabelSprite('药房 PHARMACY ✚','rgba(46,163,107,.95)',3.0,1.4);rx.position.set(W/2-3,2.25,zFar+7);scene.add(rx);
+  // 入口两侧 红十字
+  const crossTex=(function(){const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,64,64);x.fillStyle='#b21e2a';x.fillRect(26,12,12,40);x.fillRect(12,26,40,12);return new THREE.CanvasTexture(c);})();
+  [-W/2+0.25,W/2-0.25].forEach(wx=>{const cs=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:crossTex}));cs.rotation.y=wx<0?Math.PI/2:-Math.PI/2;cs.position.set(wx,3.5,zNear-4);scene.add(cs);});
+  // ===== 美化：天窗光带 / 背景墙 / 挂画 / 高绿植 / 地面导向 =====
+  const skyStrip=new THREE.Mesh(new THREE.PlaneGeometry(3.2,D-6),new THREE.MeshBasicMaterial({color:0xffffff}));
+  skyStrip.rotation.x=Math.PI/2;skyStrip.position.set(0,4.35,cz);scene.add(skyStrip);
+  const skyGlow=new THREE.PointLight(0xfff3e0,0.4,70);skyGlow.position.set(0,4.0,cz);scene.add(skyGlow);
+  const warm=new THREE.PointLight(0xffd9a8,0.45,40);warm.position.set(0,3.6,zNear-6);scene.add(warm);
+  // 前台背景墙（红底 + 院训）
+  const backdrop=signPlane([{t:'南方医院',s:72,c:'#ffffff'},{t:'以人为本 · 患者至上',s:30,c:'#ffe0e0'}],'#b21e2a','#ffffff',6.2,2.2);
+  backdrop.position.set(7,2.35,zNear-9.68);scene.add(backdrop);
+  // 健康宣教挂画
+  function poster(x,z,ry,c,title){
+    const bd=new THREE.Mesh(new THREE.PlaneGeometry(1.95,1.35),new THREE.MeshBasicMaterial({color:c}));bd.rotation.y=ry;bd.position.set(x,2.5,z);scene.add(bd);
+    const fr=signPlane([{t:title,s:40,c:'#ffffff'}],null,'#ffffff',1.8,1.2);fr.rotation.y=ry;fr.position.set(x+(ry>0?0.03:-0.03),2.5,z);scene.add(fr);}
+  poster(-W/2+0.24,zNear-20,Math.PI/2,0x0e8f8f,'健康宣教');
+  poster(W/2-0.24,zNear-17,-Math.PI/2,0xd88b3d,'就医指南');
+  poster(-W/2+0.24,zFar+9,Math.PI/2,0x3a78c2,'预防保健');
+  // 高绿植
+  function tallPlant(x,z){const g=new THREE.Group();
+    const pot=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.28,0.7,12),new THREE.MeshLambertMaterial({color:0x6f5140}));pot.position.y=0.35;g.add(pot);
+    for(let i=0;i<5;i++){const bl=new THREE.Mesh(new THREE.ConeGeometry(0.16,1.5,6),new THREE.MeshLambertMaterial({color:i%2?0x3f9d5a:0x54b96f}));bl.position.set((Math.random()-0.5)*0.34,1.25,(Math.random()-0.5)*0.34);bl.rotation.z=(Math.random()-0.5)*0.55;g.add(bl);}
+    g.position.set(x,0,z);scene.add(g);}
+  tallPlant(-W/2+1.5,cz);tallPlant(W/2-1.5,cz);
+  // 地面导向箭头
+  for(let z=zNear-4;z>zFar+4;z-=6){const tri=new THREE.Mesh(new THREE.ConeGeometry(0.34,0.7,3),new THREE.MeshBasicMaterial({color:0x12b3a8,transparent:true,opacity:0.5}));tri.rotation.x=-Math.PI/2;tri.position.set(0,0.03,z);scene.add(tri);}
+  // --- props ---
+  function plant(x,z){const g=new THREE.Group();
+    const pot=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.24,0.5,12),new THREE.MeshLambertMaterial({color:0x9a6b4f}));pot.position.y=0.25;g.add(pot);
+    const f1=new THREE.Mesh(new THREE.SphereGeometry(0.5,10,10),new THREE.MeshLambertMaterial({color:0x3f9d5a}));f1.position.y=0.92;g.add(f1);
+    const f2=new THREE.Mesh(new THREE.SphereGeometry(0.34,10,10),new THREE.MeshLambertMaterial({color:0x55b974}));f2.position.set(0.22,1.2,0.08);g.add(f2);
+    g.position.set(x,0,z);scene.add(g);}
+  function chair(x,z,ry){const g=new THREE.Group();const m=new THREE.MeshLambertMaterial({color:0x5a93b4});
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(0.72,0.12,0.72),m);seat.position.y=0.5;g.add(seat);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(0.72,0.66,0.12),m);back.position.set(0,0.82,-0.3);g.add(back);
+    g.position.set(x,0,z);g.rotation.y=ry||0;scene.add(g);}
+  plant(-W/2+1.3,zNear-2);plant(W/2-1.3,zNear-2);plant(-W/2+1.3,zFar+2);plant(W/2-1.3,zFar+2);
+  for(let k=0;k<3;k++){chair(-W/2+2.2,zNear-3-k*1.05,Math.PI/2);chair(W/2-2.2,zNear-3-k*1.05,-Math.PI/2);}
+  // --- stations ---
+  STATIONS.forEach((s,i)=>{
+    const [sx,sz]=s.pos, dz=sz-(sx<0?-1.7:1.7);
+    const base=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.9,1.3),new THREE.MeshLambertMaterial({color:0xd2e2e2}));base.position.set(sx,0.45,dz);scene.add(base);
+    const top=new THREE.Mesh(new THREE.BoxGeometry(3.7,0.12,1.55),new THREE.MeshLambertMaterial({color:0xf0f7f7}));top.position.set(sx,0.96,dz);scene.add(top);
+    const front=new THREE.Mesh(new THREE.BoxGeometry(3.42,0.5,0.06),new THREE.MeshLambertMaterial({color:s.color}));front.position.set(sx,0.5,dz+(sx<0?0.66:-0.66));scene.add(front);
+    const mon=new THREE.Mesh(new THREE.BoxGeometry(0.66,0.42,0.05),new THREE.MeshBasicMaterial({color:0x22384a}));mon.position.set(sx+0.85,1.28,dz);mon.rotation.y=sx<0?-0.35:0.35;scene.add(mon);
+    const zone=new THREE.Mesh(new THREE.CircleGeometry(3.0,40),new THREE.MeshBasicMaterial({color:s.color,transparent:true,opacity:0.16}));
+    zone.rotation.x=-Math.PI/2;zone.position.set(sx,0.03,sz);scene.add(zone);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.7,0.14,14,44),new THREE.MeshBasicMaterial({color:s.color}));
+    ring.rotation.x=Math.PI/2;ring.position.set(sx,0.13,sz);scene.add(ring);s._ring=ring;
+    const lab=makeLabelSprite((i+1)+' '+s.short+' '+s.icon,'rgba(14,143,143,.94)');lab.position.set(sx,3.15,sz);scene.add(lab);
+    const hung=makeLabelSprite(s.icon+' '+s.short,'rgba(58,120,194,.92)',2.8,1.4);hung.position.set(sx,3.95,sz+(sx<0?1.6:-1.6));scene.add(hung);
+    plant(sx+(sx<0?-2.7:2.7),sz+0.4);
+    s._npcByRole={};
+    s.npc.forEach(np=>{const npc=makeNPC(np.role,np.emoji);npc.position.set(sx+np.x,0,sz-(sx<0?-1.0:1.0));npc.rotation.y=sx<0?-0.4:0.4;scene.add(npc);animatedNPCs.push({g:npc,by:0,ph:Math.random()*6});s._npcByRole[np.role]=npc;});
+  });
+  // --- ambient walkers (背景人流) ---
+  const vEmoji=['🧑','🧓','👨','👩','🧑‍🦱','👵'];
+  for(let k=0;k<5;k++){
+    const w=makeNPC(k%3===0?'doc':'pat',vEmoji[k%vEmoji.length]);
+    const lane2=(k%2===0?-1:1)*(3.0+Math.random()*1.4);
+    w.position.set(lane2,0,zFar+4+Math.random()*(D-8));
+    scene.add(w);
+    walkers.push({g:w,dir:Math.random()<0.5?1:-1,sp:1.0+Math.random()*0.8,ph:Math.random()*6,zMin:zFar+3,zMax:zNear-3});
+  }
+  // --- guide arrow ---
+  const arrow=new THREE.Mesh(new THREE.ConeGeometry(0.42,0.8,4),new THREE.MeshBasicMaterial({color:0x12b3a8}));
+  arrow.rotation.x=Math.PI;window._arrow=arrow;scene.add(arrow);
+  // --- 玩家 Avatar（第三人称可见）---
+  const avatar=makeNPC('tec','🧑‍⚕️');avatar.visible=false;window._avatar=avatar;scene.add(avatar);
+  window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+  built=true;animate();
+}
+function buildCaseCards(){
+  document.getElementById('caseCards').innerHTML=SCENARIOS.map((s,i)=>`
+   <div class="case" onclick="enterGame(${i})"><div class="ci">${s.icon}</div>
+     <h4>${s.name.split(' · ')[1]||s.name}</h4><p>${s.desc}</p>
+     <span class="tag" style="background:${s.tagColor}">${s.tag} · ${s.stations.length}站</span></div>`).join('');
+}
+function enterGame(idx){
+  primeAudio();applyVoiceSettings();
+  studentName=(document.getElementById('nameInput').value||'').trim()||'未署名考生';
+  curScenario=SCENARIOS[idx];STATIONS=curScenario.stations;
+  document.getElementById('screen-start').classList.add('hidden');
+  document.getElementById('cross').style.display='block';
+  document.getElementById('hud').style.display='block';
+  document.getElementById('help').style.display='block';
+  document.getElementById('hudTitle').textContent=curScenario.icon+' '+curScenario.name.split(' · ')[0];
+  if(!built) initScene();
+  buildHud();lockPointer();
+}
+function lockPointer(){const c=document.getElementById('c');c.requestPointerLock&&c.requestPointerLock();}
+document.addEventListener('pointerlockchange',()=>{controlsEnabled=(document.pointerLockElement===document.getElementById('c'));});
+document.addEventListener('mousemove',e=>{if(!controlsEnabled||dialogOpen)return;yaw-=e.movementX*0.0022;pitch-=e.movementY*0.0022;pitch=Math.max(-1.2,Math.min(1.2,pitch));});
+document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.toLowerCase()==='e'&&!dialogOpen)tryInteract();if(e.key===' '&&!dialogOpen){e.preventDefault();viewMode=viewMode==='fps'?'tps':'fps';const cr=document.getElementById('cross');if(cr)cr.style.display=viewMode==='fps'?'block':'none';}});
+document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+document.getElementById('c').addEventListener('click',()=>{if(!dialogOpen&&built)lockPointer();});
+function buildHud(){document.getElementById('hudList').innerHTML=STATIONS.map((s,i)=>`<div class="st-item" id="hud${i}"><span class="ic">${s.icon}</span>${s.short}</div>`).join('');refreshHud();}
+function refreshHud(){let nx=false;STATIONS.forEach((s,i)=>{const el=document.getElementById('hud'+i);if(!el)return;el.className='st-item';if(s.done){el.classList.add('done');el.querySelector('.ic').textContent='✓';}else if(!nx){el.classList.add('next');nx=true;}});}
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+  if(controlsEnabled&&!dialogOpen){
+    const sp=6*dt;let fx=0,fz=0;
+    if(keys['w']||keys['arrowup'])fz-=1;if(keys['s']||keys['arrowdown'])fz+=1;
+    if(keys['a']||keys['arrowleft'])fx-=1;if(keys['d']||keys['arrowright'])fx+=1;
+    if(fx||fz){const len=Math.hypot(fx,fz);fx/=len;fz/=len;const sinY=Math.sin(yaw),cosY=Math.cos(yaw);
+      player.x+=(fx*cosY+fz*sinY)*sp;player.z+=(fz*cosY-fx*sinY)*sp;
+      player.x=Math.max(-BOUND.x,Math.min(BOUND.x,player.x));player.z=Math.max(BOUND.zMin,Math.min(BOUND.zMax,player.z));}
+  }
+  if(viewMode==='tps'&&window._avatar){
+    const av=window._avatar;av.visible=true;av.position.set(player.x,0,player.z);av.rotation.y=yaw+Math.PI;
+    const sinY=Math.sin(yaw),cosY=Math.cos(yaw),dist=4.4;
+    let cx=player.x+sinY*dist, czc=player.z+cosY*dist, cyy=player.h+1.5-pitch*3.0;
+    cx=Math.max(-BOUND.x-1.5,Math.min(BOUND.x+1.5,cx));czc=Math.max(BOUND.zMin-1.5,Math.min(BOUND.zMax+1.5,czc));
+    camera.position.set(cx,cyy,czc);camera.lookAt(player.x,player.h+0.15,player.z);
+  } else {
+    if(window._avatar)window._avatar.visible=false;
+    camera.position.set(player.x,player.h,player.z);camera.rotation.set(0,0,0);camera.rotateY(yaw);camera.rotateX(pitch);
+  }
+  const t=clock.getElapsedTime();let near=null,nd=99;
+  STATIONS.forEach(s=>{const [sx,sz]=s.pos;const d=Math.hypot(player.x-sx,player.z-sz);
+    if(s._ring){const sc=1+Math.sin(t*3)*0.06;s._ring.scale.set(sc,sc,sc);s._ring.material.color.setHex(s.done?0x2ea36b:s.color);}
+    if(!s.done&&d<nd){nd=d;near=s;}});
+  const p=document.getElementById('prompt');
+  if(near&&nd<3.4&&!dialogOpen){p.style.display='block';p.innerHTML='按 <b>E</b> 在 '+near.name+' 开始任务';window._near=near;}
+  else{p.style.display='none';window._near=null;}
+  const ns=STATIONS.find(s=>!s.done);
+  if(window._arrow){if(ns){const a=ns.pos;window._arrow.visible=true;window._arrow.position.set(a[0],3.6+Math.sin(t*2.2)*0.22,a[1]);window._arrow.rotation.y=t*1.4;}else{window._arrow.visible=false;}}
+  animatedNPCs.forEach(o=>{o.g.position.y=Math.sin(t*1.6+o.ph)*0.022;const ar=o.g.userData.arms;if(ar){const s=Math.sin(t*1.3+o.ph)*0.07;ar[0].rotation.x=s;ar[1].rotation.x=-s;}});
+  walkers.forEach(w=>{w.g.position.z+=w.dir*w.sp*dt;if(w.g.position.z>w.zMax){w.g.position.z=w.zMax;w.dir=-1;}else if(w.g.position.z<w.zMin){w.g.position.z=w.zMin;w.dir=1;}w.g.rotation.y=w.dir>0?Math.PI:0;w.g.position.y=Math.abs(Math.sin(t*7+w.ph))*0.045;
+    const sw=Math.sin(t*7+w.ph)*0.5,lg=w.g.userData.legs,ar=w.g.userData.arms;if(lg){lg[0].rotation.x=sw;lg[1].rotation.x=-sw;}if(ar){ar[0].rotation.x=-sw*0.7;ar[1].rotation.x=sw*0.7;}});
+  if(curSpeakerMesh&&curSpeakerMesh.userData&&curSpeakerMesh.userData.mouth){curSpeakerMesh.userData.mouth.scale.y=talking?(1+Math.abs(Math.sin(t*20))*2.4):1;}
+  renderer.render(scene,camera);
+}
+function tryInteract(){const s=window._near;if(s&&!s.done)openStation(s);}
+
+/* ============================================================
+   任务对话系统
+   ============================================================ */
+let curStation=null,curText='',curSpoke=false,curConf=0,curDur=0;
+function openStation(s){curStation=s;dialogOpen=true;if(document.exitPointerLock)document.exitPointerLock();document.getElementById('screen-dialog').classList.remove('hidden');renderTask();}
+function closeDialog(){stopAudio();curSpeakerMesh=null;document.getElementById('screen-dialog').classList.add('hidden');dialogOpen=false;}
+function srcLangOf(t){if(t.type==='interpret')return t.dir==='zh2en'?'zh-CN':'en-US';if(t.type==='conversation')return 'en-US';return 'zh-CN';}
+function renderTask(){
+  const s=curStation,t=s.tasks[s.ti];curText='';curSpoke=false;curConf=0;curDur=0;
+  hintUsed=false;curSpeakerMesh=(s._npcByRole&&t.type!=='choice')?(s._npcByRole[t.who]||null):null;
+  const head=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="badge-top">${s.icon} ${s.name} · 任务 ${s.ti+1}/${s.tasks.length}</span></div><p class="small" style="margin:0 0 12px">${s.intro}</p>`;
+  const body=document.getElementById('dlgBody');
+  const spkBtn=ttsOK?`<button class="spk-btn" onclick="replaySpeak()">🔊 重听</button>`:'';
+  if(t.type==='interpret'){
+    const lab=t.spk||(t.who==='doc'?'中国医生':t.who==='nur'?'医护人员':'外籍患者');
+    const srcLang=t.dir==='zh2en'?'（中文）':'（English）';
+    const instr=t.dir==='zh2en'?'➡️ 请把这句话口译成英文给患者':'➡️ 请把这句话口译成中文给医生';
+    const micLang=t.dir==='zh2en'?'英文':'中文';
+    body.innerHTML=head+`<div class="speaker"><span class="av ${t.who}">${t.emoji||(t.who==='doc'?'👨‍⚕️':t.who==='nur'?'💁':'🧑')}</span>${lab} ${srcLang}</div>
+      <div class="bubble ${t.who}">${t.src}</div>${spkBtn}<div class="task-instr">${instr}</div>${inputBlock(micLang)}`;
+  } else if(t.type==='conversation'){
+    const lab=t.spk||'外籍患者';
+    body.innerHTML=head+`<div class="speaker"><span class="av pat">${t.emoji||'🧑'}</span>${lab}（English）</div>
+      <div class="bubble pat">${t.src}</div>${spkBtn}<div class="task-instr">🗨️ 英语口语对话 · ${t.hint}</div>${inputBlock('英文')}`;
+  } else {
+    body.innerHTML=head+`<div class="task-instr">💬 情景判断 · 选择最恰当的处理方式</div>
+      <div class="bubble cv">${t.prompt}</div>${spkBtn}<div id="optWrap">${t.options.map((o,i)=>`<button class="opt" onclick="chooseOpt(${i})">${o.t}</button>`).join('')}</div>`;
+  }
+  setTimeout(()=>{playLine();},300);
+}
+function lineId(){return curScenario.id+'_'+(STATIONS.indexOf(curStation)+1)+'_'+(curStation.ti+1);}
+function setTalking(b){talking=b;const av=document.querySelector('#dlgBody .av');if(av)av.classList.toggle('talking',b);}
+function stopAudio(){if(curAudio){try{curAudio.pause();}catch(_){}curAudio=null;}stopSpeak();setTalking(false);}
+function ttsSpeakLine(t,text,lang){
+  if(!ttsOK){return;}
+  speechSynthesis.cancel();
+  const fem=/妈妈|孕妇|妻子|家长|新妈妈|护士|助产|女/.test(t.spk||'')||/👩|🤰|🥹|💁|🥲/.test(t.emoji||'');
+  const isPat=(t.type==='conversation')||t.who==='pat';
+  const u=new SpeechSynthesisUtterance(text);u.lang=lang;const v=pickVoice(lang,fem?'f':'m');if(v)u.voice=v;
+  u.rate=isPat?0.92:0.88;u.pitch=isPat?1.04:0.96;
+  u.onstart=()=>setTalking(true);u.onend=()=>setTalking(false);
+  speechSynthesis.speak(u);
+}
+function replaySpeak(){playLine();}
+function isFem(t){return /妈妈|孕妇|妻子|家长|新妈妈|护士|助产|女/.test(t.spk||'')||/👩|🤰|🥹|💁|🥲/.test(t.emoji||'');}
+async function fallbackVoice(t,text,lang){
+  const url=await fetchCloudTTS(text,lang,isFem(t)?'f':'m');   // 先试云端语音大模型
+  if(url){const a=new Audio(url);a.onplay=()=>setTalking(true);a.onended=()=>{setTalking(false);curAudio=null;};a.onerror=()=>ttsSpeakLine(t,text,lang);curAudio=a;a.play().catch(()=>ttsSpeakLine(t,text,lang));return;}
+  ttsSpeakLine(t,text,lang);                                   // 再退回浏览器合成
+}
+function playUrl(url,onFail){
+  let done=false;const a=new Audio(url);
+  const to=setTimeout(()=>{if(!done){done=true;curAudio=null;onFail&&onFail();}},1600);
+  a.onplay=()=>{done=true;clearTimeout(to);setTalking(true);};
+  a.onended=()=>{setTalking(false);curAudio=null;};
+  a.onerror=()=>{if(!done){done=true;clearTimeout(to);curAudio=null;onFail&&onFail();}};
+  curAudio=a;a.play().then(()=>{}).catch(()=>{if(!done){done=true;clearTimeout(to);curAudio=null;onFail&&onFail();}});
+}
+function playLine(){
+  const t=curStation.tasks[curStation.ti];
+  const text=t.type==='choice'?t.prompt.replace(/[A-C]\..*$/,''):t.src;
+  const lang=srcLangOf(t);
+  stopAudio();
+  const man=AUDIO_MANIFEST[lineId()];
+  const local=man||(USE_LOCAL_AUDIO?(AUDIO_BASE+lineId()+'.mp3'):null);
+  if(local)playUrl(local,()=>fallbackVoice(t,text,lang));   // 真人录音优先，失败自动回退
+  else fallbackVoice(t,text,lang);                           // 默认：云端TTS→浏览器合成
+}
+function browserSay(txt,lang,gender){if(!ttsOK)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang=lang||'zh-CN';const v=pickVoice(u.lang,gender||'f');if(v)u.voice=v;speechSynthesis.speak(u);}catch(_){}}
+function testVoice(){primeAudio();applyVoiceSettings();const s='您好，欢迎来到南方医院。Hello, welcome to Nanfang Hospital.';
+  const st=document.getElementById('ttsStatus');if(st){st.style.color='#6b7c8f';st.textContent='正在调用小米 MiMo…';}
+  fetchCloudTTS(s,'zh-CN','f').then(u=>{
+    if(u){const a=new Audio(u);a.play().catch(()=>browserSay(s,'zh-CN','f'));if(st){st.style.color='#2ea36b';st.textContent='🟢 MiMo 云端真人语音已生效';}}
+    else{browserSay(s,'zh-CN','f');if(st){st.style.color='#d8584f';st.textContent='🔴 未接通 MiMo（'+lastTTS+'）→ 退回机器音。若你是本地 file:// 打开或接口未放行跨域，请把网页放到服务器访问，或改用随附代理。';}}
+  }).catch(()=>{browserSay(s,'zh-CN','f');if(st){st.style.color='#d8584f';st.textContent='🔴 调用异常：'+lastTTS;}});}
+function inputBlock(micLang){
+  return `<div class="mic-row">${speechOK?`<button class="mic" id="micBtn" onclick="toggleMic()">🎤 开始说话</button><span class="timer" id="timer"></span>`:''}
+    <span class="mic-hint">${speechOK?`用<b>${micLang}</b>作答，<b>中途可停顿</b>，说完点「停止作答」。也可打字。`:'请在下方打字作答。'}</span></div>
+    <div class="transcript" id="transcript"></div>
+    <textarea id="answerBox" placeholder="（也可以在此打字作答…）" oninput="onType()"></textarea>
+    <div style="margin:8px 0 2px"><button class="spk-btn" type="button" onclick="showHint()">💡 要点提示（使用将扣分）</button> <span id="hintBox" class="hint-box"></span></div>
+    <div style="margin-top:8px"><button class="btn btn-primary" id="submitBtn" onclick="submitTask()" disabled>提交并评分</button></div>`;
+}
+function showHint(){
+  const t=curStation.tasks[curStation.ti];const el=document.getElementById('hintBox');if(!el)return;
+  hintUsed=true;
+  const pen=difficulty==='easy'?1:3;
+  const head=`<span style="color:var(--amber);font-weight:700">已用提示（该项 −${pen}） </span>`;
+  let pts=[];
+  if(t.type==='interpret')pts=t.kw.map(g=>g[0]);
+  else if(t.type==='conversation')pts=(t.topic||[]).map(g=>g[0]);
+  if(!pts.length){el.innerHTML=head+'（本题凭语感自然作答即可）';return;}
+  el.innerHTML=head+'建议覆盖：'+pts.map(p=>`<span class="hint-pt">${p}</span>`).join('');
+}
+function onType(){curText=document.getElementById('answerBox').value.trim();if(!listening)curSpoke=false;document.getElementById('submitBtn').disabled=curText.length===0;}
+let rec=null,listening=false,manualStop=false,finalText='',confList=[],recStart=0,timerInt=null;
+function toggleMic(){if(!speechOK)return;listening?stopListen():startListen();}
+function startListen(){
+  stopAudio();
+  const t=curStation.tasks[curStation.ti];
+  const lang=(t.type==='interpret'&&t.dir==='en2zh')?'zh-CN':'en-US';
+  finalText='';confList=[];manualStop=false;
+  const btn=document.getElementById('micBtn'),tr=document.getElementById('transcript');
+  function build(){
+    rec=new SR();rec.lang=lang;rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
+    rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal){finalText+=r[0].transcript+' ';if(r[0].confidence)confList.push(r[0].confidence);}else interim+=r[0].transcript;}tr.textContent='🗣️ '+(finalText+interim).trim();};
+    rec.onerror=e=>{if(e.error!=='no-speech'&&e.error!=='aborted')tr.textContent='⚠️ '+e.error+'（可改用打字）';};
+    rec.onend=()=>{if(!manualStop){try{rec.start();}catch(_){}}};
+    try{rec.start();}catch(_){}
+  }
+  build();listening=true;recStart=Date.now();
+  btn.classList.add('rec');btn.textContent='⏹ 停止作答';
+  tr.textContent='🎙️ 聆听中…（可以慢慢说，停顿也没关系）';
+  timerInt=setInterval(()=>{const el=document.getElementById('timer');if(el)el.textContent='⏱ '+Math.floor((Date.now()-recStart)/1000)+'s';},500);
+}
+function stopListen(){
+  manualStop=true;listening=false;if(rec)try{rec.stop();}catch(_){}clearInterval(timerInt);
+  curDur=(Date.now()-recStart)/1000;finalText=finalText.trim();
+  const btn=document.getElementById('micBtn');if(btn){btn.classList.remove('rec');btn.textContent='🎤 重新作答';}
+  if(finalText){curText=finalText;curSpoke=true;curConf=confList.length?confList.reduce((a,b)=>a+b,0)/confList.length:0.75;const ab=document.getElementById('answerBox');if(ab)ab.value=finalText;}
+  const sb=document.getElementById('submitBtn');if(sb)sb.disabled=curText.length===0;
+}
+function norm(s){return s.toLowerCase().replace(/[.,!?;:'"()。，！？、；：]/g,' ');}
+function countHits(text,groups){const n=norm(text);return groups.map(g=>g.some(syn=>n.includes(syn.toLowerCase())));}
+function submitTask(){
+  const t=curStation.tasks[curStation.ti];
+  const ans=(curText||document.getElementById('answerBox').value).trim();if(!ans)return;
+  if(listening)stopListen();
+  if(t.type==='interpret')scoreInterpret(t,ans);else scoreConversation(t,ans);
+}
+function fluencyFromSpeech(ans,isZh,accFrac){
+  if(!curSpoke)return{v:7,note:'打字作答，发音流利度按基准分 7/10 计。'};
+  const wc=isZh?ans.replace(/\s/g,'').length/2:ans.trim().split(/\s+/).length;
+  const rate=(wc>=4&&wc<=80)?1:(wc<4?0.4:0.75);
+  let v=Math.round(Math.min(10,curConf*7+rate*3));if(accFrac!==undefined&&accFrac>0.5)v=Math.max(v,5);
+  return{v,note:`语音平均置信度 ${(curConf*100).toFixed(0)}%，用时约 ${curDur.toFixed(0)} 秒。`};
+}
+function curveScore(frac){const c=difficulty==='easy'?Math.min(1,Math.sqrt(frac)*1.18):Math.min(1,Math.pow(frac,0.8));return Math.round(c*10);}
+function scoreInterpret(t,ans){
+  const kwHits=countHits(ans,t.kw),kwN=kwHits.filter(Boolean).length;
+  const pen=hintUsed?(difficulty==='easy'?1:3):0;
+  const accFrac=kwN/t.kw.length,accGot=Math.max(0,curveScore(accFrac)-pen);
+  score.accuracy.got+=accGot;score.accuracy.max+=10;
+  let termGot=0,termHits=[],hasT=t.terms&&t.terms.length;
+  if(hasT){termHits=countHits(ans,t.terms);termGot=Math.max(0,curveScore(termHits.filter(Boolean).length/t.terms.length)-pen);score.terminology.got+=termGot;score.terminology.max+=10;}
+  const flu=fluencyFromSpeech(ans,t.dir==='en2zh',accFrac);score.fluency.got+=flu.v;score.fluency.max+=10;
+  record.push({station:curStation.name,type:t.dir==='zh2en'?'口译·中译英':'口译·英译中',got:{accuracy:accGot,terminology:hasT?termGot:null,fluency:flu.v},max:{accuracy:10,terminology:hasT?10:null,fluency:10}});
+  const chip=(l,v,c)=>`<span class="chip" style="background:${c}">${l} ${v}/10</span>`;
+  const kwHtml=t.kw.map((g,i)=>`<span class="kw ${kwHits[i]?'hit':'miss'}">${kwHits[i]?'✓':'✗'} ${g[0]}</span>`).join('');
+  const termHtml=hasT?`<h4>🩺 医学术语</h4><div>${t.terms.map((g,i)=>`<span class="kw ${termHits[i]?'hit':'miss'}">${termHits[i]?'✓':'✗'} ${g[0]}</span>`).join('')}</div>`:'';
+  showFeedback(`<div class="chips">${chip('🎯 准确',accGot,'var(--blue)')}${hasT?chip('🩺 术语',termGot,'var(--teal)'):''}${chip('🗣️ 流利',flu.v,'var(--amber)')}</div>
+    <h4>🎯 关键信息点（命中 ${kwN}/${t.kw.length}）</h4><div>${kwHtml}</div>${termHtml}
+    ${pen?`<div class="small" style="color:var(--amber)">💡 已使用要点提示：准确${hasT?'、术语':''}各 −${pen}</div>`:''}
+    <div class="model"><b>参考译文：</b>${t.model}</div><div class="small" style="margin-top:8px">🗣️ ${flu.note}</div>`);
+}
+function scoreConversation(t,ans){
+  const wc=ans.trim().split(/\s+/).length,lenOK=wc>=t.minWords;
+  let relFrac=1,relHtml='';
+  if(t.topic&&t.topic.length){const h=countHits(ans,t.topic);relFrac=h.filter(Boolean).length/t.topic.length;
+    relHtml=`<h4>🧭 话题契合点</h4><div>${t.topic.map((g,i)=>`<span class="kw ${h[i]?'hit':'miss'}">${h[i]?'✓':'·'} ${g[0]}</span>`).join('')}</div>`;}
+  let base=(lenOK?6:Math.round(6*wc/t.minWords))+Math.round(4*relFrac); if(difficulty==='easy')base+=1;
+  const pen=hintUsed?(difficulty==='easy'?1:3):0;
+  let comm=Math.max(0,Math.min(10,base)-pen);
+  score.empathy.got+=comm;score.empathy.max+=10;
+  const flu=fluencyFromSpeech(ans,false);score.fluency.got+=flu.v;score.fluency.max+=10;
+  record.push({station:curStation.name,type:'英语口语对话',got:{empathy:comm,fluency:flu.v},max:{empathy:10,fluency:10}});
+  const chip=(l,v,c)=>`<span class="chip" style="background:${c}">${l} ${v}/10</span>`;
+  showFeedback(`<div class="chips">${chip('🗨️ 口语对话',comm,'var(--green)')}${chip('🗣️ 流利',flu.v,'var(--amber)')}</div>
+    <h4>${comm>=7?'✅ 回应得体':'💡 可以更充分'}</h4>
+    <p class="small" style="margin:.2em 0">你的回答约 ${wc} 个词。${lenOK?'内容长度充分。':'可以再多说几句让对话更自然完整。'}</p>${relHtml}
+    ${pen?`<div class="small" style="color:var(--amber)">💡 已使用要点提示：口语对话 −${pen}</div>`:''}
+    <div class="model"><b>参考回应：</b>${t.model}</div><div class="small" style="margin-top:8px">🗣️ ${flu.note}</div>`);
+}
+function chooseOpt(i){
+  const t=curStation.tasks[curStation.ti],o=t.options[i];
+  score.empathy.got+=o.s;score.empathy.max+=10;
+  record.push({station:curStation.name,type:'共情应变判断',got:{empathy:o.s},max:{empathy:10}});
+  const wrap=document.getElementById('optWrap');[...wrap.children].forEach((b,idx)=>{b.onclick=null;if(idx===i)b.classList.add(o.good?'sel-good':'sel-bad');else b.classList.add('sel-dim');});
+  const best=t.options.find(x=>x.good);
+  showFeedback(`<div class="chips"><span class="chip" style="background:${o.good?'var(--green)':'var(--red)'}">💚 共情 ${o.s}/10</span></div>
+    <h4>${o.good?'✅ 很好的选择':'⚠️ 可以更好'}</h4><p style="margin:.2em 0">${o.fb}</p>
+    ${o.good?'':`<div class="model"><b>更恰当的做法：</b>${best.t.replace(/^A\.\s*/,'')}</div>`}`);
+}
+function showFeedback(inner){
+  stopAudio();
+  const body=document.getElementById('dlgBody');
+  body.insertAdjacentHTML('beforeend',`<div class="fb">${inner}</div><div style="margin-top:14px"><button class="btn btn-primary" onclick="nextTask()">${curStation.ti+1>=curStation.tasks.length?'完成本站，继续行走 ▶':'下一项 ▶'}</button></div>`);
+  const sb=document.getElementById('submitBtn');if(sb)sb.disabled=true;
+  const ab=document.getElementById('answerBox');if(ab)ab.disabled=true;
+  const mb=document.getElementById('micBtn');if(mb)mb.disabled=true;
+}
+function nextTask(){
+  curStation.ti++;
+  if(curStation.ti>=curStation.tasks.length){
+    curStation.done=true;refreshHud();closeDialog();
+    if(STATIONS.every(s=>s.done)){showResult();return;}
+    const p=document.getElementById('prompt');p.style.display='block';p.innerHTML='✅ 完成 '+curStation.name+'！点击画面继续行走，前往下一个发光工位';setTimeout(()=>{p.style.display='none';},2600);
+    return;
+  }
+  renderTask();
+}
+
+/* ============================================================
+   结算 + 成绩单导出
+   ============================================================ */
+function pct(d){return d.max===0?0:Math.round(d.got/d.max*100);}
+function gradeOf(o){
+  if(o>=90)return{level:'认证通过 · 优秀（一级陪护翻译）',color:'#2ea36b',emoji:'🏆',desc:'口译准确、术语扎实、口语沟通得体，可独立胜任医疗陪护翻译。'};
+  if(o>=75)return{level:'认证通过 · 合格（二级陪护翻译）',color:'#0e8f8f',emoji:'🎖️',desc:'整体胜任陪护翻译，个别维度仍有提升空间。'};
+  if(o>=60)return{level:'有条件通过（三级 · 需带教）',color:'#e8a23d',emoji:'📜',desc:'基本能完成沟通，建议在资深译员带教下积累经验后复评。'};
+  return{level:'暂未通过 · 建议补考',color:'#d8584f',emoji:'📕',desc:'关键信息或术语传达存在明显缺口，建议针对性训练后重考。'};
+}
+function tipsOf(f,a,tm,e){const t=[];if(f<75)t.push('多做影子跟读与限时口译，提升语速与发音清晰度。');if(a<75)t.push('注意完整传达数字、转移性疼痛、否认症状等关键信息，避免漏译。');if(tm<75)t.push('强化术语库：本场景相关诊断、检查、药物、知情同意的中英对照。');if(e<75)t.push('练习英语自由对话与共情：忠实原意的同时调节语气、安抚患者、守住伦理。');if(!t.length)t.push('各维度均衡，继续保持，可挑战其他科室更复杂的场景。');return t;}
+let lastResult=null;
+function showResult(){
+  const f=pct(score.fluency),a=pct(score.accuracy),tm=pct(score.terminology),e=pct(score.empathy);
+  const overall=Math.round((f+a+tm+e)/4);const g=gradeOf(overall);const tips=tipsOf(f,a,tm,e);
+  lastResult={f,a,tm,e,overall,g,tips,date:new Date().toLocaleString('zh-CN')};
+  const bar=(l,v,c)=>`<div class="bar-row"><div class="lab"><span>${l}</span><span>${v}%</span></div><div class="bar"><span style="width:${v}%;background:${c}"></span></div></div>`;
+  document.getElementById('screen-result').classList.remove('hidden');
+  document.getElementById('resBody').innerHTML=`
+    <div class="cert" style="background:linear-gradient(135deg,${g.color},${g.color}cc)">
+      <div style="font-size:36px">${g.emoji}</div><div class="score-big">${overall}</div>
+      <div style="opacity:.9">综合得分 · 满分100</div><h3 style="font-size:19px;margin-top:8px;color:#fff">${g.level}</h3></div>
+    <p class="muted" style="text-align:center">考生：<b>${studentName}</b> ｜ 场景：${curScenario.name} ｜ ${lastResult.date}</p>
+    <p class="muted" style="text-align:center;margin-top:-4px">${g.desc}</p>
+    <h3 style="margin-top:14px">📊 四维评分</h3>
+    ${bar('🗣️ 口语流利度与发音',f,'var(--amber)')}${bar('🎯 翻译准确性',a,'var(--blue)')}${bar('🩺 医学术语',tm,'var(--teal)')}${bar('💚 交际与英语口语对话',e,'var(--green)')}
+    <h3 style="margin-top:14px">📝 提升建议</h3><ul style="font-size:14.5px">${tips.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <div class="exp-row">
+      <button class="btn btn-primary btn-sm" onclick="exportHTML()">⬇ 下载成绩单（可打印PDF）</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ 下载成绩单（CSV）</button>
+      <button class="btn btn-ghost btn-sm" onclick="location.reload()">🔄 重新挑战</button></div>
+    <p class="small" style="text-align:center;margin-top:8px">成绩单含逐项明细，可交给老师存档或打印。本评分为自动化模拟评估，仅供教学练习参考。</p>`;
+}
+function downloadFile(name,content,mime){
+  const blob=new Blob([content],{type:mime});const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+function recRows(){return record.map((r,i)=>{const c=['accuracy','terminology','fluency','empathy'].map(k=>r.got[k]==null?'—':`${r.got[k]}/${r.max[k]}`);return {i:i+1,station:r.station,type:r.type,acc:c[0],term:c[1],flu:c[2],emp:c[3]};});}
+function exportHTML(){
+  const R=lastResult,rows=recRows();
+  const html=`<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>医疗陪护翻译认证成绩单 - ${studentName}</title>
+  <style>body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:#1f2d3d;max-width:820px;margin:24px auto;padding:0 20px;}
+  h1{text-align:center;color:#0a6e6e;margin-bottom:4px;}.sub{text-align:center;color:#6b7c8f;margin-top:0;}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 28px;margin:16px 0;font-size:15px;}.meta b{color:#0a6e6e;}
+  .cert{text-align:center;padding:18px;border-radius:14px;color:#fff;background:${R.g.color};margin:14px 0;}.cert .big{font-size:46px;font-weight:800;}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px;}th,td{border:1px solid #dbe6ea;padding:8px 10px;text-align:center;}
+  th{background:#e6f5f5;color:#0a6e6e;}td.l{text-align:left;}
+  .dim{display:flex;justify-content:space-between;font-weight:600;margin:8px 0 4px;}.bar{height:14px;background:#eef2f3;border-radius:8px;overflow:hidden;}.bar span{display:block;height:100%;}
+  ul{font-size:14.5px;}.sign{margin-top:40px;display:flex;justify-content:space-between;font-size:14px;color:#6b7c8f;}
+  .foot{margin-top:24px;font-size:12px;color:#9aa;text-align:center;}@media print{.noprint{display:none;}}
+  .noprint{text-align:center;margin:16px 0;}.noprint button{background:#0e8f8f;color:#fff;border:none;padding:10px 22px;border-radius:24px;font-size:15px;cursor:pointer;}</style></head><body>
+  <div class="noprint"><button onclick="window.print()">🖨 打印 / 另存为 PDF</button></div>
+  <h1>医疗陪护翻译认证 · 成绩单</h1><p class="sub">Medical Escort Interpreting Certification — Score Report</p>
+  <div class="meta"><div>考生：<b>${studentName}</b></div><div>科室场景：<b>${curScenario.name}</b></div><div>测评时间：<b>${R.date}</b></div></div>
+  <div class="cert"><div class="big">${R.overall}<span style="font-size:18px">/100</span></div><div style="font-size:18px;font-weight:700">${R.g.emoji} ${R.g.level}</div><div style="opacity:.9;font-size:14px;margin-top:4px">${R.g.desc}</div></div>
+  <h3>四维评分</h3>
+  ${[['口语流利度与发音',R.f,'#e8a23d'],['翻译准确性',R.a,'#3a78c2'],['医学术语',R.tm,'#0e8f8f'],['交际与英语口语对话',R.e,'#2ea36b']].map(d=>`<div class="dim"><span>${d[0]}</span><span>${d[1]}%</span></div><div class="bar"><span style="width:${d[1]}%;background:${d[2]}"></span></div>`).join('')}
+  <h3 style="margin-top:18px">逐项明细</h3>
+  <table><tr><th>#</th><th>工位</th><th>任务类型</th><th>翻译准确</th><th>医学术语</th><th>口语流利</th><th>交际共情</th></tr>
+  ${rows.map(r=>`<tr><td>${r.i}</td><td class="l">${r.station}</td><td>${r.type}</td><td>${r.acc}</td><td>${r.term}</td><td>${r.flu}</td><td>${r.emp}</td></tr>`).join('')}</table>
+  <h3>评语与提升建议</h3><ul>${R.tips.map(x=>`<li>${x}</li>`).join('')}</ul>
+  <div class="sign"><div>主考教师签字：____________________</div><div>日期：____________________</div></div>
+  <p class="foot">本成绩单由 3D 医疗陪护翻译考试系统自动生成；发音与流利度基于浏览器语音识别置信度估算，仅供教学练习参考。</p></body></html>`;
+  downloadFile(`医疗陪护翻译成绩单_${studentName}_${curScenario.id}.html`,html,'text/html;charset=utf-8');
+}
+function exportCSV(){
+  const R=lastResult,rows=recRows();let csv='﻿';
+  csv+='医疗陪护翻译认证成绩单\n';
+  csv+=`考生,${studentName}\n科室场景,${curScenario.name}\n测评时间,${R.date}\n综合得分,${R.overall}\n认证结果,${R.g.level}\n`;
+  csv+=`口语流利度与发音,${R.f}%\n翻译准确性,${R.a}%\n医学术语,${R.tm}%\n交际与英语口语对话,${R.e}%\n\n`;
+  csv+='序号,工位,任务类型,翻译准确,医学术语,口语流利,交际共情\n';
+  rows.forEach(r=>{csv+=`${r.i},${r.station},${r.type},${r.acc},${r.term},${r.flu},${r.emp}\n`;});
+  csv+='\n评语与建议\n';R.tips.forEach((t,i)=>{csv+=`${i+1},${t.replace(/,/g,'，')}\n`;});
+  downloadFile(`医疗陪护翻译成绩单_${studentName}_${curScenario.id}.csv`,csv,'text/csv;charset=utf-8');
+}
+buildCaseCards();
+</script>
+</body>
+</html>
