@@ -548,7 +548,7 @@ const CLOUD_TTS={
   endpoint:'https://api.xiaomimimo.com/v1/chat/completions', // MiMo 官方接口（联网直连）
   endpointProxy:'http://localhost:8787', // 备用：若该接口不放行浏览器跨域，改用随附 mimo-tts-proxy.js
   model:'mimo-v2.5-tts',
-  voiceOf:(lang,gender)=> (lang&&lang.slice(0,2)==='zh') ? 'default_zh' : 'default_en',  // MiMo音色：mimo_default/default_zh/default_en
+  voiceOf:(lang,gender)=> 'mimo_default',  // 已验证可用的通用音色（中英文都能读）；如需分语种可试 default_zh / default_en
   buildRequest:function(text,lang,gender){return{method:'POST',headers:{'Content-Type':'application/json','api-key':MIMO_KEY,'Authorization':'Bearer '+MIMO_KEY},body:JSON.stringify({
     model:this.model,
     messages:[{role:'user',content:'请自然地朗读下面这句话。'},{role:'assistant',content:text}],
@@ -1163,4 +1163,3 @@ function exportCSV(){
 buildCaseCards();
 </script>
 </body>
-</html>
