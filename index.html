@@ -146,7 +146,10 @@
 <div class="screen hidden" id="screen-dialog"><div class="panel" id="dlgBody"></div></div>
 <div class="screen hidden" id="screen-result"><div class="panel" id="resBody"></div></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>window.THREE||document.write('<script src="https://lib.baomitu.com/three.js/r128/three.min.js"><\/script>');</script>
+<script>window.THREE||document.write('<script src="https://cdn.staticfile.net/three.js/r128/three.min.js"><\/script>');</script>
+<script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');</script>
 <script>
 /* ===== 语音识别 / 合成 ===== */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -195,7 +198,7 @@ function stopSpeak(){ if(ttsOK) speechSynthesis.cancel(); }
 window.addEventListener('DOMContentLoaded',()=>{
   const el=document.getElementById('speech-state');
   if(el) el.textContent=(speechOK?'（语音识别 ✓）':'（不支持语音识别，可打字）')+(ttsOK?'（NPC 配音 ✓）':'');
-  try{const k=localStorage.getItem('mimo_key'),ep=localStorage.getItem('mimo_ep');
+  try{localStorage.removeItem('mimo_ep');const k=localStorage.getItem('mimo_key'),ep=localStorage.getItem('mimo_ep2');
     if(k){const ki=document.getElementById('keyInput');if(ki)ki.value=k;MIMO_KEY=k;}
     if(ep){const ei=document.getElementById('endpointInput');if(ei)ei.value=ep;CLOUD_TTS.endpoint=ep;}
   }catch(_){}
@@ -537,18 +540,19 @@ let MIMO_KEY='';
 let lastTTS='(未调用)';       // 诊断：最近一次云端TTS结果
 function applyVoiceSettings(){
   const k=document.getElementById('keyInput'); if(k) MIMO_KEY=(k.value||'').trim();
-  const ep=document.getElementById('endpointInput'); if(ep&&ep.value.trim()) CLOUD_TTS.endpoint=ep.value.trim();
-  try{localStorage.setItem('mimo_key',MIMO_KEY);localStorage.setItem('mimo_ep',CLOUD_TTS.endpoint);}catch(_){}
+  const ep=document.getElementById('endpointInput'); const epv=ep?(ep.value||'').trim():'';
+  if(epv) CLOUD_TTS.endpoint=epv;
+  try{localStorage.setItem('mimo_key',MIMO_KEY); if(epv)localStorage.setItem('mimo_ep2',epv); else localStorage.removeItem('mimo_ep2');}catch(_){}
 }
 const CLOUD_TTS={
   enabled:true,
   // 联网即用：把本网页放到任意网站/服务器(http/https)打开，若 MiMo 接口放行跨域，浏览器会直接调用→出真人音，用户无需装任何东西。
   // 注意：用本地 file:// 双击打开、或接口未放行跨域(CORS)时，浏览器会拦截→退回机器音；此时改用下面 endpointProxy 并部署一次随附代理。
-  endpoint:'https://token-plan-cn.xiaomimimo.com/v1/chat/completions', // 联网直连 MiMo
-  endpointProxy:'http://localhost:8787', // 备用：被跨域拦截时改用随附 mimo-tts-proxy.js
-  model:'mimo-v2-tts',
-  voiceOf:(lang,gender)=> (lang&&lang.slice(0,2)==='zh') ? 'default_zh' : 'default_en',  // MiMo仅这几种：mimo_default/default_zh/default_en
-  buildRequest:function(text,lang,gender){return{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+MIMO_KEY},body:JSON.stringify({
+  endpoint:'https://api.xiaomimimo.com/v1/chat/completions', // MiMo 官方接口（联网直连）
+  endpointProxy:'http://localhost:8787', // 备用：若该接口不放行浏览器跨域，改用随附 mimo-tts-proxy.js
+  model:'mimo-v2.5-tts',
+  voiceOf:(lang,gender)=> (lang&&lang.slice(0,2)==='zh') ? 'default_zh' : 'default_en',  // MiMo音色：mimo_default/default_zh/default_en
+  buildRequest:function(text,lang,gender){return{method:'POST',headers:{'Content-Type':'application/json','api-key':MIMO_KEY,'Authorization':'Bearer '+MIMO_KEY},body:JSON.stringify({
     model:this.model,
     messages:[{role:'user',content:'请自然地朗读下面这句话。'},{role:'assistant',content:text}],
     audio:{format:'wav',voice:this.voiceOf(lang,gender)}
@@ -790,6 +794,7 @@ function buildCaseCards(){
      <span class="tag" style="background:${s.tagColor}">${s.tag} · ${s.stations.length}站</span></div>`).join('');
 }
 function enterGame(idx){
+  if(typeof THREE==='undefined'){alert('3D 引擎(Three.js)未能加载，通常是网络/CDN 问题（国内访问尤其常见）。请检查网络后按 Ctrl+F5 强制刷新重试；多试几次或换网络即可。');return;}
   primeAudio();applyVoiceSettings();
   studentName=(document.getElementById('nameInput').value||'').trim()||'未署名考生';
   curScenario=SCENARIOS[idx];STATIONS=curScenario.stations;
@@ -1117,15 +1122,4 @@ function exportHTML(){
 }
 function exportCSV(){
   const R=lastResult,rows=recRows();let csv='﻿';
-  csv+='医疗陪护翻译认证成绩单\n';
-  csv+=`考生,${studentName}\n科室场景,${curScenario.name}\n测评时间,${R.date}\n综合得分,${R.overall}\n认证结果,${R.g.level}\n`;
-  csv+=`口语流利度与发音,${R.f}%\n翻译准确性,${R.a}%\n医学术语,${R.tm}%\n交际与英语口语对话,${R.e}%\n\n`;
-  csv+='序号,工位,任务类型,翻译准确,医学术语,口语流利,交际共情\n';
-  rows.forEach(r=>{csv+=`${r.i},${r.station},${r.type},${r.acc},${r.term},${r.flu},${r.emp}\n`;});
-  csv+='\n评语与建议\n';R.tips.forEach((t,i)=>{csv+=`${i+1},${t.replace(/,/g,'，')}\n`;});
-  downloadFile(`医疗陪护翻译成绩单_${studentName}_${curScenario.id}.csv`,csv,'text/csv;charset=utf-8');
-}
-buildCaseCards();
-</script>
-</body>
-</html>
+  csv+='医疗陪护
